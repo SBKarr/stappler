@@ -286,7 +286,7 @@ bool Driver::init(Handle handle, const mem::Vector<mem::StringView> &dbs) {
 		}
 	}
 
-	ResultInterface result(this, exec(conn, LIST_DB_TYPES));
+	ResultCursor result(this, exec(conn, LIST_DB_TYPES));
 
 	db::sql::Result res(&result);
 	mem::pool::push(_storageTypes.get_allocator());
@@ -650,32 +650,33 @@ Driver::Driver(mem::StringView path, const void *external) : _external(external)
 	}
 }
 
-ResultInterface::ResultInterface(const Driver *d, Driver::Result res) : driver(d), result(res) {
+ResultCursor::ResultCursor(const Driver *d, Driver::Result res) : driver(d), result(res) {
 	err = result.get() ? driver->getStatus(result) : Driver::Status::FatalError;
+	nrows = driver->getNTuples(result);
 }
 
-ResultInterface::~ResultInterface() {
+ResultCursor::~ResultCursor() {
 	clear();
 }
 
-bool ResultInterface::isBinaryFormat(size_t field) const {
+bool ResultCursor::isBinaryFormat(size_t field) const {
 	return driver->isBinaryFormat(result, field) != 0;
 }
 
-bool ResultInterface::isNull(size_t row, size_t field) {
-	return driver->isNull(result, row, field);
+bool ResultCursor::isNull(size_t field) const {
+	return driver->isNull(result, currentRow, field);
 }
 
-mem::StringView ResultInterface::toString(size_t row, size_t field) {
-	return mem::StringView(driver->getValue(result, row, field), driver->getLength(result, row, field));
+mem::StringView ResultCursor::toString(size_t field) const {
+	return mem::StringView(driver->getValue(result, currentRow, field), driver->getLength(result, currentRow, field));
 }
 
-mem::BytesView ResultInterface::toBytes(size_t row, size_t field) {
+mem::BytesView ResultCursor::toBytes(size_t field) const {
 	if (isBinaryFormat(field)) {
-		return mem::BytesView((uint8_t *)driver->getValue(result, row, field), driver->getLength(result, row, field));
+		return mem::BytesView((uint8_t *)driver->getValue(result, currentRow, field), driver->getLength(result, currentRow, field));
 	} else {
-		auto val = driver->getValue(result, row, field);
-		auto len = driver->getLength(result, row, field);
+		auto val = driver->getValue(result, currentRow, field);
+		auto len = driver->getLength(result, currentRow, field);
 		if (len > 2 && memcmp(val, "\\x", 2) == 0) {
 			auto d = new mem::Bytes(stappler::base16::decode<mem::Interface>(stappler::CoderSource(val + 2, len - 2)));
 			return mem::BytesView(*d);
@@ -683,9 +684,10 @@ mem::BytesView ResultInterface::toBytes(size_t row, size_t field) {
 		return mem::BytesView((uint8_t *)val, len);
 	}
 }
-int64_t ResultInterface::toInteger(size_t row, size_t field) {
+int64_t ResultCursor::toInteger(size_t field) const {
 	if (isBinaryFormat(field)) {
-		stappler::BytesViewNetwork r((const uint8_t *)driver->getValue(result, row, field), driver->getLength(result, row, field));
+		stappler::BytesViewNetwork r((const uint8_t *)driver->getValue(result, currentRow, field),
+				driver->getLength(result, currentRow, field));
 		switch (r.size()) {
 		case 1: return r.readUnsigned(); break;
 		case 2: return r.readUnsigned16(); break;
@@ -695,13 +697,14 @@ int64_t ResultInterface::toInteger(size_t row, size_t field) {
 		}
 		return 0;
 	} else {
-		auto val = driver->getValue(result, row, field);
+		auto val = driver->getValue(result, currentRow, field);
 		return stappler::StringToNumber<int64_t>(val, nullptr, 0);
 	}
 }
-double ResultInterface::toDouble(size_t row, size_t field) {
+double ResultCursor::toDouble(size_t field) const {
 	if (isBinaryFormat(field)) {
-		stappler::BytesViewNetwork r((const uint8_t *)driver->getValue(result, row, field), driver->getLength(result, row, field));
+		stappler::BytesViewNetwork r((const uint8_t *)driver->getValue(result, currentRow, field),
+				driver->getLength(result, currentRow, field));
 		switch (r.size()) {
 		case 2: return r.readFloat16(); break;
 		case 4: return r.readFloat32(); break;
@@ -710,12 +713,12 @@ double ResultInterface::toDouble(size_t row, size_t field) {
 		}
 		return 0;
 	} else {
-		auto val = driver->getValue(result, row, field);
+		auto val = driver->getValue(result, currentRow, field);
 		return stappler::StringToNumber<double>(val, nullptr, 0);
 	}
 }
-bool ResultInterface::toBool(size_t row, size_t field) {
-	auto val = driver->getValue(result, row, field);
+bool ResultCursor::toBool(size_t field) const {
+	auto val = driver->getValue(result, currentRow, field);
 	if (!isBinaryFormat(field)) {
 		if (val) {
 			if (*val == 'T' || *val == 't' || *val == 'y') {
@@ -727,7 +730,7 @@ bool ResultInterface::toBool(size_t row, size_t field) {
 		return val && *val != 0;
 	}
 }
-mem::Value ResultInterface::toTypedData(size_t row, size_t field) {
+mem::Value ResultCursor::toTypedData(size_t field) const {
 	auto t = driver->getType(result, field);
 	auto s = driver->getTypeById(t);
 	switch (s) {
@@ -739,25 +742,26 @@ mem::Value ResultInterface::toTypedData(size_t row, size_t field) {
 		return mem::Value();
 		break;
 	case Interface::StorageType::Bool:
-		return mem::Value(toBool(row, field));
+		return mem::Value(toBool(field));
 		break;
 	case Interface::StorageType::Char:
 		break;
 	case Interface::StorageType::Float4:
 	case Interface::StorageType::Float8:
-		return mem::Value(toDouble(row, field));
+		return mem::Value(toDouble(field));
 		break;
 	case Interface::StorageType::Int2:
 	case Interface::StorageType::Int4:
 	case Interface::StorageType::Int8:
-		return mem::Value(toInteger(row, field));
+		return mem::Value(toInteger(field));
 		break;
 	case Interface::StorageType::Text:
 	case Interface::StorageType::VarChar:
-		return mem::Value(toString(row, field));
+		return mem::Value(toString(field));
 		break;
 	case Interface::StorageType::Numeric: {
-		stappler::BytesViewNetwork r((const uint8_t *)driver->getValue(result, row, field), driver->getLength(result, row, field));
+		stappler::BytesViewNetwork r((const uint8_t *)driver->getValue(result, currentRow, field),
+				driver->getLength(result, currentRow, field));
 		auto str = pg_numeric_to_string(r);
 
 		auto v = mem::StringView(str).readDouble();
@@ -769,12 +773,12 @@ mem::Value ResultInterface::toTypedData(size_t row, size_t field) {
 		break;
 	}
 	case Interface::StorageType::Bytes:
-		return mem::Value(toBytes(row, field));
+		return mem::Value(toBytes(field));
 		break;
 	}
 	return mem::Value();
 }
-int64_t ResultInterface::toId() {
+int64_t ResultCursor::toId() const {
 	if (isBinaryFormat(0)) {
 		stappler::BytesViewNetwork r((const uint8_t *)driver->getValue(result, 0, 0), driver->getLength(result, 0, 0));
 		switch (r.size()) {
@@ -790,40 +794,56 @@ int64_t ResultInterface::toId() {
 		return stappler::StringToNumber<int64_t>(val, nullptr, 0);
 	}
 }
-mem::StringView ResultInterface::getFieldName(size_t field) {
+mem::StringView ResultCursor::getFieldName(size_t field) const {
 	auto ptr = driver->getName(result, field);
 	if (ptr) {
 		return mem::StringView(ptr);
 	}
 	return mem::StringView();
 }
-bool ResultInterface::isSuccess() const {
+bool ResultCursor::isSuccess() const {
 	return result.get() && pgsql_is_success(err);
 }
-size_t ResultInterface::getRowsCount() const {
-	return driver->getNTuples(result);
+bool ResultCursor::isEmpty() const {
+	return nrows - currentRow <= 0;
 }
-size_t ResultInterface::getFieldsCount() const {
+bool ResultCursor::isEnded() const {
+	return currentRow >= nrows;
+}
+size_t ResultCursor::getFieldsCount() const {
 	return driver->getNFields(result);
 }
-size_t ResultInterface::getAffectedRows() const {
+size_t ResultCursor::getAffectedRows() const {
 	return driver->getCmdTuples(result);
 }
-mem::Value ResultInterface::getInfo() const {
+size_t ResultCursor::getRowsHint() const {
+	return nrows;
+}
+bool ResultCursor::next() {
+	if (!isEmpty()) {
+		++ currentRow;
+		return !isEmpty();
+	}
+	return false;
+}
+void ResultCursor::reset() {
+	currentRow = 0;
+}
+mem::Value ResultCursor::getInfo() const {
 	return mem::Value({
 		stappler::pair("error", mem::Value(stappler::toInt(err))),
 		stappler::pair("status", mem::Value(driver->getStatusMessage(err))),
 		stappler::pair("desc", mem::Value(result.get() ? driver->getResultErrorMessage(result) : "Fatal database error")),
 	});
 }
-void ResultInterface::clear() {
+void ResultCursor::clear() {
 	if (result.get()) {
 		driver->clearResult(result);
 		result = Driver::Result(nullptr);
 	}
 }
 
-Driver::Status ResultInterface::getError() const {
+Driver::Status ResultCursor::getError() const {
 	return err;
 }
 

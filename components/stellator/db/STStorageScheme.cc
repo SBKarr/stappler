@@ -903,7 +903,7 @@ bool Scheme::removeWithWorker(Worker &w, uint64_t oid) const {
 					query.include(it->backReference->getName());
 				}
 			}
-			if (auto obj = t.setObject(int64_t(oid), reduceGetQuery(Worker(*this, t).select(query)))) {
+			if (auto obj = Worker(*this, t).asSystem().reduceGetQuery(query, true)) {
 				touchParents(t, obj); // if transaction fails - all changes will be rolled back
 
 				for (auto &it : views) {
@@ -1122,7 +1122,7 @@ mem::Value Scheme::makeObjectForPatch(const Transaction &t, uint64_t oid, const 
 		query.include(Query::Field(it->getName()));
 	}
 
-	auto ret = reduceGetQuery(Worker(*this, t).asSystem().select(query));
+	auto ret = Worker(*this, t).asSystem().reduceGetQuery(query, false);
 	if (!obj) {
 		return ret;
 	} else {

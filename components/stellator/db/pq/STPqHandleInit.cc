@@ -64,8 +64,6 @@ struct ColRec {
 struct TableRec {
 	using Scheme = db::Scheme;
 
-	static mem::String getNameForDelta(const Scheme &);
-
 	static mem::Map<mem::StringView, TableRec> parse(const db::Interface::Config &cfg,
 			const mem::Map<mem::StringView, const Scheme *> &s, const mem::Vector<mem::Pair<mem::StringView, int64_t>> &);
 	static mem::Map<mem::StringView, TableRec> get(Handle &h, mem::StringStream &stream);
@@ -202,10 +200,10 @@ static void writeAfterTrigger(mem::StringStream &stream, const db::Scheme *s, co
 
 	auto writeInsertDelta = [&] (Handle::DeltaAction a) {
 		if (a == Handle::DeltaAction::Create || a == Handle::DeltaAction::Update) {
-			stream << "\t\tINSERT INTO " << TableRec::getNameForDelta(*s) << "(\"object\",\"action\",\"time\",\"user\")"
+			stream << "\t\tINSERT INTO " << Handle::getNameForDelta(*s) << "(\"object\",\"action\",\"time\",\"user\")"
 				"VALUES(NEW.__oid," << stappler::toInt(a) << ",current_setting('serenity.now')::bigint,current_setting('serenity.user')::bigint);\n";
 		} else {
-			stream << "\t\tINSERT INTO " << TableRec::getNameForDelta(*s) << "(\"object\",\"action\",\"time\",\"user\")"
+			stream << "\t\tINSERT INTO " << Handle::getNameForDelta(*s) << "(\"object\",\"action\",\"time\",\"user\")"
 				"VALUES(OLD.__oid," << stappler::toInt(a) << ",current_setting('serenity.now')::bigint,current_setting('serenity.user')::bigint);\n";
 		}
 	};
@@ -537,10 +535,6 @@ void TableRec::writeCompareResult(mem::StringStream &stream,
 	}
 }
 
-mem::String TableRec::getNameForDelta(const Scheme &scheme) {
-	return mem::toString("__delta_", scheme.getName());
-}
-
 mem::Map<mem::StringView, TableRec> TableRec::parse(const db::Interface::Config &cfg,
 		const mem::Map<mem::StringView, const db::Scheme *> &s, const mem::Vector<mem::Pair<mem::StringView, int64_t>> &customs) {
 	mem::Map<mem::StringView, TableRec> tables;
@@ -670,7 +664,7 @@ mem::Map<mem::StringView, TableRec> TableRec::parse(const db::Interface::Config 
 			}
 
 			if (scheme->hasDelta()) {
-				auto name = getNameForDelta(*scheme);
+				auto name = Handle::getNameForDelta(*scheme);
 				TableRec table;
 				table.cols.emplace("id", ColRec(ColRec::Type::Int8, true, true));
 				table.cols.emplace("object", ColRec(ColRec::Type::Int8, true));
@@ -979,7 +973,7 @@ static void Handle_insert_sorted(mem::Vector<mem::Pair<mem::StringView, int64_t>
 }
 
 bool Handle::init(const Interface::Config &cfg, const mem::Map<mem::StringView, const Scheme *> &s) {
-	if (!performSimpleQuery(mem::String::make_weak(DATABASE_DEFAULTS))) {
+	if (!performSimpleQuery(mem::StringView(DATABASE_DEFAULTS))) {
 		return false;
 	}
 
@@ -1056,11 +1050,11 @@ bool Handle::init(const Interface::Config &cfg, const mem::Map<mem::StringView, 
 
 	beginTransaction_pg(TransactionLevel::ReadCommited);
 	mem::StringStream query;
-	query << "DELETE FROM __login WHERE \"date\" < " << (stappler::Time::now() - config::getInternalsStorageTime()).toSeconds() << ";";
+	query << "DELETE FROM __login WHERE \"date\" < " << stappler::Time::now().toSeconds() - config::getInternalsStorageTime().toSeconds() << ";";
 	performSimpleQuery(query.weak());
 	query.clear();
 
-	query << "DELETE FROM __error WHERE \"time\" < " << (stappler::Time::now() - config::getInternalsStorageTime()).toMicros() << ";";
+	query << "DELETE FROM __error WHERE \"time\" < " << stappler::Time::now().toMicros() - config::getInternalsStorageTime().toMicros() << ";";
 	performSimpleQuery(query.weak());
 	query.clear();
 	endTransaction_pg();

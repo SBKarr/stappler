@@ -39,8 +39,8 @@ mem::Value SqlHandle::get(const stappler::CoderSource &key) {
 	makeQuery([&] (SqlQuery &query) {
 		query.select("data").from(getKeyValueSchemeName()).where("name", Comparation::Equal, key).finalize();
 		selectQuery(query, [&] (Result &res) {
-			if (res.nrows() == 1) {
-				ret = stappler::data::read<mem::BytesView, mem::Interface>(res.front().toBytes(0));
+			if (!res.empty()) {
+				ret = stappler::data::read<mem::BytesView, mem::Interface>(res.current().toBytes(0));
 			}
 		});
 	});
@@ -95,11 +95,8 @@ db::User * SqlHandle::authorizeUser(const db::Auth &auth, const mem::StringView 
 		size_t count = 0;
 		mem::Value ud;
 		selectQuery(query, [&] (Result &res) {
-			if (res.nrows() != 1) {
-				return;
-			}
+			count = res.current().toInteger(0);
 
-			count = res.front().toInteger(0);
 			if (count >= size_t(config::getMaxLoginFailure())) {
 				messages::error("Auth", "Autorization blocked", mem::Value{
 					stappler::pair("cooldown", mem::Value((int64_t)config::getMaxAuthTime().toSeconds())),
@@ -144,7 +141,7 @@ db::User * SqlHandle::authorizeUser(const db::Auth &auth, const mem::StringView 
 		selectQuery(query, [&] (Result &res) {
 			query.clear();
 			int64_t id = 0;
-			if (res.nrows() == 1 && (id = res.readId())) {
+			if (!res.empty() && (id = res.readId())) {
 				query.update("__login").set("date", stappler::Time::now().toSeconds())
 						.where("id", Comparation::Equal, mem::Value(id)).finalize();
 				performQuery(query);
@@ -164,13 +161,18 @@ db::User * SqlHandle::authorizeUser(const db::Auth &auth, const mem::StringView 
 				}
 				performQuery(query);
 			}
-
 		});
 	});
 	return ret;
 }
 
 void SqlHandle::makeSessionsCleanup() {
+	bool transactionStarted = false;
+	if (transactionStatus == TransactionStatus::None) {
+		beginTransaction();
+		transactionStarted = true;
+	}
+
 	mem::StringStream query;
 	query << "DELETE FROM __sessions WHERE (mtime + maxage + 10) < " << stappler::Time::now().toSeconds() << ";";
 	performSimpleQuery(query.weak());
@@ -178,7 +180,7 @@ void SqlHandle::makeSessionsCleanup() {
 	query.clear();
 	query << "DELETE FROM __removed RETURNING __oid;";
 	performSimpleSelect(query.weak(), [&] (Result &res) {
-		if (res.nrows() == 0) {
+		if (res.empty()) {
 			return;
 		}
 
@@ -214,6 +216,10 @@ void SqlHandle::makeSessionsCleanup() {
 	query.clear();
 	query << "DELETE FROM __broadcasts WHERE date < " << (stappler::Time::now() - stappler::TimeInterval::seconds(10)).toMicroseconds() << ";";
 	performSimpleQuery(query.weak());
+
+	if (transactionStarted) {
+		endTransaction();
+	}
 }
 
 void SqlHandle::finalizeBroadcast() {
@@ -264,10 +270,12 @@ void SqlHandle::broadcast(const mem::Bytes &bytes) {
 			query.insert("__broadcasts").fields("date", "msg").values(stappler::Time::now(), mem::Bytes(bytes)).finalize();
 			performQuery(query);
 		});
-		makeQuery([&] (SqlQuery &query) {
-			query.getStream() << "NOTIFY " << config::getSerenityBroadcastChannelName() << ";";
-			performQuery(query);
-		});
+		if (isNotificationsSupported()) {
+			makeQuery([&] (SqlQuery &query) {
+				query.getStream() << "NOTIFY " << config::getSerenityBroadcastChannelName() << ";";
+				performQuery(query);
+			});
+		}
 	} else {
 		_bcasts.emplace_back(stappler::Time::now(), bytes);
 	}
@@ -347,7 +355,7 @@ int64_t SqlHandle::getDeltaValue(const Scheme &scheme) {
 					.from(SqlQuery::Field(getNameForDelta(scheme)).as("d")).finalize();
 			selectQuery(q, [&] (Result &res) {
 				if (res) {
-					ret = res.at(0).toInteger(0);
+					ret = res.current().toInteger(0);
 				}
 			});
 		});
@@ -365,7 +373,7 @@ int64_t SqlHandle::getDeltaValue(const Scheme &scheme, const db::FieldView &view
 					.from(SqlQuery::Field(deltaName).as("d")).where("tag", Comparation::Equal, tag).finalize();
 			selectQuery(q, [&] (Result &res) {
 				if (res) {
-					ret = res.at(0).toInteger(0);
+					ret = res.current().toInteger(0);
 				}
 			});
 		});

@@ -30,7 +30,7 @@ NS_DB_SQL_BEGIN
 class Result;
 
 struct ResultRow {
-	ResultRow(const Result *, size_t);
+	ResultRow(const db::ResultCursor *, size_t);
 	ResultRow(const ResultRow & other) noexcept;
 	ResultRow & operator=(const ResultRow &other) noexcept;
 
@@ -53,7 +53,7 @@ struct ResultRow {
 
 	mem::Value toData(size_t n, const db::Field &);
 
-	const Result *result = nullptr;
+	const db::ResultCursor *result = nullptr;
 	size_t row = 0;
 };
 
@@ -61,9 +61,7 @@ class Result {
 public:
 	struct Iter {
 		Iter() noexcept {}
-		Iter(const Result *res, size_t n) noexcept : result(res), row(n) { }
-
-		Iter(const Iter & other) noexcept : result(other.result), row(other.row) { }
+		Iter(Result *res, size_t n) noexcept : result(res), row(n) { }
 
 		Iter& operator=(const Iter &other) { result = other.result; row = other.row; return *this; }
 		bool operator==(const Iter &other) const { return row == other.row; }
@@ -73,23 +71,16 @@ public:
 		bool operator<=(const Iter &other) const { return row <= other.row; }
 		bool operator>=(const Iter &other) const { return row >= other.row; }
 
-		Iter& operator++() { ++row; return *this; }
-		Iter operator++(int) { auto tmp = *this; ++ row; return tmp; }
-		Iter& operator--() { --row; return *this; }
-		Iter operator--(int) { auto tmp = *this; --row; return tmp; }
-		Iter& operator+= (size_t n) { row += n; return *this; }
-		Iter& operator-=(size_t n) { row -= n; return *this; }
-		intptr_t operator-(const Iter &other) const { return row - other.row; }
+		Iter& operator++() { if (!result->next()) { row = stappler::maxOf<size_t>(); } return *this; }
 
-		ResultRow operator*() const { return ResultRow(result, row); }
-		ResultRow operator[](size_t n) const { return ResultRow(result, row + n); }
+		ResultRow operator*() const { return ResultRow(result->_cursor, row); }
 
-		const Result *result = nullptr;
+		Result *result = nullptr;
 		size_t row = 0;
 	};
 
 	Result() = default;
-	Result(db::ResultInterface *);
+	Result(db::ResultCursor *);
 	~Result();
 
 	Result(const Result &) = delete;
@@ -104,33 +95,34 @@ public:
 	mem::Value info() const;
 
 	bool empty() const;
-	size_t nrows() const;
-	size_t nfields() const;
-
-	int64_t readId() const;
+	size_t nrows() const { return getRowsHint(); }
+	size_t nfields() const { return _nfields; }
+	size_t getRowsHint() const;
 	size_t getAffectedRows() const;
+
+	int64_t readId();
 
 	void clear();
 
-	Iter begin() const;
-	Iter end() const;
+	Iter begin();
+	Iter end();
 
-	ResultRow front() const;
-	ResultRow back() const;
-	ResultRow at(size_t) const;
+	ResultRow current() const;
+	bool next();
 
 	mem::StringView name(size_t) const;
 
-	mem::Value decode(const db::Scheme &) const;
-	mem::Value decode(const db::Field &) const;
+	mem::Value decode(const db::Scheme &);
+	mem::Value decode(const db::Field &);
 
 protected:
 	friend struct ResultRow;
 
-	db::ResultInterface *_interface = nullptr;
+	db::ResultCursor *_cursor = nullptr;
+	size_t _row = 0;
 
 	bool _success = false;
-	size_t _nrows = 0;
+
 	size_t _nfields = 0;
 };
 

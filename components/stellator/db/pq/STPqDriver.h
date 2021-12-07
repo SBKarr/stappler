@@ -58,17 +58,17 @@ public:
 
 	virtual bool init(Handle handle, const mem::Vector<mem::StringView> &) override;
 
-	virtual void performWithStorage(Handle handle, const mem::Callback<void(const db::Adapter &)> &cb) const;
-	virtual Interface *acquireInterface(Handle handle, mem::pool_t *) const;
+	virtual void performWithStorage(Handle handle, const mem::Callback<void(const db::Adapter &)> &cb) const override;
+	virtual Interface *acquireInterface(Handle handle, mem::pool_t *) const override;
 
-	virtual Handle connect(const mem::Map<mem::StringView, mem::StringView> &) const;
-	virtual void finish(Handle) const;
+	virtual Handle connect(const mem::Map<mem::StringView, mem::StringView> &) const override;
+	virtual void finish(Handle) const override;
 
-	virtual Connection getConnection(Handle h) const;
+	virtual Connection getConnection(Handle h) const override;
 
-	virtual bool isValid(Handle) const;
-	virtual bool isValid(Connection) const;
-	virtual bool isIdle(Connection) const;
+	virtual bool isValid(Handle) const override;
+	virtual bool isValid(Connection) const override;
+	virtual bool isIdle(Connection) const override;
 
 	virtual int listenForNotifications(Handle) const override;
 	virtual bool consumeNotifications(Handle, const mem::Callback<void(mem::StringView)> &) const override;
@@ -111,7 +111,6 @@ protected:
 	Handle doConnect(const char * const *keywords, const char * const *values, int expand_dbname) const;
 
 	bool _init = false;
-	mem::StringView _driverPath;
 
 	mem::Vector<mem::Pair<uint32_t, db::Interface::StorageType>> _storageTypes;
 	mem::Vector<mem::Pair<uint32_t, mem::String>> _customTypes;
@@ -120,36 +119,44 @@ protected:
 	const void *_external = nullptr;
 };
 
-class ResultInterface : public db::ResultInterface {
+class ResultCursor : public db::ResultCursor {
 public:
 	inline static constexpr bool pgsql_is_success(Driver::Status x) {
 		return (x == Driver::Status::Empty) || (x == Driver::Status::CommandOk) || (x == Driver::Status::TuplesOk) || (x == Driver::Status::SingleTuple);
 	}
 
-	ResultInterface(const Driver *d, Driver::Result res);
+	ResultCursor(const Driver *d, Driver::Result res);
 
-	virtual ~ResultInterface();
+	virtual ~ResultCursor();
 	virtual bool isBinaryFormat(size_t field) const override;
-	virtual bool isNull(size_t row, size_t field) override;
-	virtual mem::StringView toString(size_t row, size_t field) override;
-	virtual mem::BytesView toBytes(size_t row, size_t field) override;
-	virtual int64_t toInteger(size_t row, size_t field) override;
-	virtual double toDouble(size_t row, size_t field) override;
-	virtual bool toBool(size_t row, size_t field) override;
-	virtual mem::Value toTypedData(size_t row, size_t field) override;
-	virtual int64_t toId() override;
-	virtual mem::StringView getFieldName(size_t field) override;
-	virtual bool isSuccess() const override;
-	virtual size_t getRowsCount() const override;
-	virtual size_t getFieldsCount() const override;
-	virtual size_t getAffectedRows() const override;
+	virtual bool isNull(size_t field) const override;
+	virtual mem::StringView toString(size_t field) const override;
+	virtual mem::BytesView toBytes(size_t field) const override;
+	virtual int64_t toInteger(size_t field) const override;
+	virtual double toDouble(size_t field) const override;
+	virtual bool toBool(size_t field) const override;
+	virtual mem::Value toTypedData(size_t field) const override;
+	virtual int64_t toId() const override;
+	virtual mem::StringView getFieldName(size_t field) const override;
 	virtual mem::Value getInfo() const override;
 	virtual void clear() override;
 	Driver::Status getError() const;
 
+	virtual bool isSuccess() const override;
+	virtual bool isEmpty() const override;
+	virtual bool isEnded() const override;
+	virtual size_t getFieldsCount() const override;
+	virtual size_t getAffectedRows() const override;
+	virtual size_t getRowsHint() const override;
+
+	virtual bool next() override;
+	virtual void reset() override;
+
 public:
 	const Driver *driver = nullptr;
 	Driver::Result result = Driver::Result(nullptr);
+	size_t nrows = 0;
+	size_t currentRow = 0;
 	Driver::Status err = Driver::Status::Empty;
 };
 

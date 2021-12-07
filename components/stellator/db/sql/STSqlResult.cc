@@ -26,7 +26,7 @@ THE SOFTWARE.
 
 NS_DB_SQL_BEGIN
 
-ResultRow::ResultRow(const Result *res, size_t r) : result(res), row(r) { }
+ResultRow::ResultRow(const ResultCursor *res, size_t r) : result(res), row(r) { }
 
 ResultRow::ResultRow(const ResultRow & other) noexcept : result(other.result), row(other.row) { }
 ResultRow & ResultRow::operator=(const ResultRow &other) noexcept {
@@ -36,14 +36,14 @@ ResultRow & ResultRow::operator=(const ResultRow &other) noexcept {
 }
 
 size_t ResultRow::size() const {
-	return result->_nfields;
+	return result->getFieldsCount();
 }
 mem::Value ResultRow::toData(const db::Scheme &scheme, const mem::Map<mem::String, db::Field> &viewFields) {
 	mem::Value row(mem::Value::Type::DICTIONARY);
-	row.asDict().reserve(result->_nfields);
+	row.asDict().reserve(result->getFieldsCount());
 	mem::Value *deltaPtr = nullptr;
-	for (size_t i = 0; i < result->_nfields; i++) {
-		auto n = result->name(i);
+	for (size_t i = 0; i < result->getFieldsCount(); i++) {
+		auto n = result->getFieldName(i);
 		if (n == "__oid") {
 			if (!isNull(i)) {
 				row.setInteger(toInteger(i), n.str<mem::Interface>());
@@ -95,38 +95,38 @@ mem::StringView ResultRow::front() const {
 	return at(0);
 }
 mem::StringView ResultRow::back() const {
-	return at(result->_nfields - 1);
+	return at(result->getFieldsCount() - 1);
 }
 
 bool ResultRow::isNull(size_t n) const {
-	return result->_interface->isNull(row, n);
+	return result->isNull(n);
 }
 
 mem::StringView ResultRow::at(size_t n) const {
-	return result->_interface->toString(row, n);
+	return result->toString(n);
 }
 
 mem::StringView ResultRow::toString(size_t n) const {
-	return result->_interface->toString(row, n);
+	return result->toString(n);
 }
 mem::BytesView ResultRow::toBytes(size_t n) const {
-	return result->_interface->toBytes(row, n);
+	return result->toBytes(n);
 }
 
 int64_t ResultRow::toInteger(size_t n) const {
-	return result->_interface->toInteger(row, n);
+	return result->toInteger(n);
 }
 
 double ResultRow::toDouble(size_t n) const {
-	return result->_interface->toDouble(row, n);
+	return result->toDouble(n);
 }
 
 bool ResultRow::toBool(size_t n) const {
-	return result->_interface->toBool(row, n);
+	return result->toBool(n);
 }
 
 mem::Value ResultRow::toTypedData(size_t n) const {
-	return result->_interface->toTypedData(row, n);
+	return result->toTypedData(n);
 }
 
 mem::Value ResultRow::toData(size_t n, const db::Field &f) {
@@ -156,7 +156,7 @@ mem::Value ResultRow::toData(size_t n, const db::Field &f) {
 		return stappler::data::read<mem::BytesView, mem::Interface>(toBytes(n));
 		break;
 	case db::Type::Custom:
-		return f.getSlot<db::FieldCustom>()->readFromStorage(*result->_interface, row, n);
+		return f.getSlot<db::FieldCustom>()->readFromStorage(*result, n);
 		break;
 	default:
 		break;
@@ -165,28 +165,25 @@ mem::Value ResultRow::toData(size_t n, const db::Field &f) {
 	return mem::Value();
 }
 
-Result::Result(db::ResultInterface *iface) : _interface(iface) {
-	_success = _interface->isSuccess();
+Result::Result(db::ResultCursor *iface) : _cursor(iface) {
+	_success = _cursor->isSuccess();
 	if (_success) {
-		_nrows = _interface->getRowsCount();
-		_nfields = _interface->getFieldsCount();
+		_nfields = _cursor->getFieldsCount();
 	}
 }
 Result::~Result() {
 	clear();
 }
 
-Result::Result(Result &&res) : _interface(res._interface), _success(res._success), _nrows(res._nrows), _nfields(res._nfields) {
-	res._interface = nullptr;
+Result::Result(Result &&res) : _cursor(res._cursor), _success(res._success), _nfields(res._nfields) {
+	res._cursor = nullptr;
 }
 Result & Result::operator=(Result &&res) {
 	clear();
-	_interface = res._interface;
+	_cursor = res._cursor;
 	_success = res._success;
-	_nrows = res._nrows;
 	_nfields = res._nfields;
-
-	res._interface = nullptr;
+	res._cursor = nullptr;
 	return *this;
 }
 
@@ -198,65 +195,71 @@ bool Result::success() const {
 }
 
 mem::Value Result::info() const {
-	return _interface->getInfo();
+	return _cursor->getInfo();
 }
 
 bool Result::empty() const {
-	return _nrows == 0;
-}
-size_t Result::nrows() const {
-	return _nrows;
-}
-size_t Result::nfields() const {
-	return _nfields;
+	return _cursor->isEmpty();
 }
 
-int64_t Result::readId() const {
-	return _interface->toId();
+int64_t Result::readId() {
+	return _cursor->toId();
 }
 
 size_t Result::getAffectedRows() const {
-	return _interface->getAffectedRows();
+	return _cursor->getAffectedRows();
+}
+
+size_t Result::getRowsHint() const {
+	return _cursor->getRowsHint();
 }
 
 void Result::clear() {
-	if (_interface) {
-		_interface->clear();
+	if (_cursor) {
+		_cursor->clear();
 	}
 }
 
-Result::Iter Result::begin() const {
-	return Result::Iter(this, 0);
-}
-Result::Iter Result::end() const {
-	return Result::Iter(this, nrows());
+Result::Iter Result::begin() {
+	if (_row != 0) {
+		_cursor->reset();
+		_row = 0;
+	}
+	return Result::Iter(this, _row);
 }
 
-ResultRow Result::front() const {
-	return ResultRow(this, 0);
+Result::Iter Result::end() {
+	return Result::Iter(this, stappler::maxOf<size_t>());
 }
-ResultRow Result::back() const {
-	return ResultRow(this, _nrows - 1);
+
+ResultRow Result::current() const {
+	return ResultRow(_cursor, _row);
 }
-ResultRow Result::at(size_t n) const {
-	return ResultRow(this, n);
+
+bool Result::next() {
+	if (_cursor->next()) {
+		++ _row;
+		return true;
+	}
+	_row = stappler::maxOf<size_t>();
+	return false;
 }
 
 mem::StringView Result::name(size_t n) const {
-	return _interface->getFieldName(n);
+	return _cursor->getFieldName(n);
 }
 
-mem::Value Result::decode(const db::Scheme &scheme) const {
+mem::Value Result::decode(const db::Scheme &scheme) {
 	mem::Value ret(mem::Value::Type::ARRAY);
-	ret.asArray().reserve(nrows());
+	ret.asArray().reserve(getRowsHint());
 	for (auto it : *this) {
 		ret.addValue(it.toData(scheme));
 	}
 	return ret;
 }
-mem::Value Result::decode(const db::Field &field) const {
+mem::Value Result::decode(const db::Field &field) {
 	mem::Value ret;
-	if (_nrows > 0) {
+	if (!empty()) {
 		if (field.getType() == db::Type::Array) {
 			auto &arrF = static_cast<const db::FieldArray *>(field.getSlot())->tfield;
 			for (auto it : *this) {

@@ -594,7 +594,7 @@ struct FieldCustom : Field::Slot {
 		init<FieldCustom, Args...>(*this, std::forward<Args>(args)...);
 	}
 
-	virtual mem::Value readFromStorage(ResultInterface &, size_t row, size_t field) const = 0;
+	virtual mem::Value readFromStorage(const ResultCursor &, size_t field) const = 0;
 	virtual bool writeToStorage(QueryInterface &, mem::StringStream &, const mem::Value &) const = 0;
 
 	virtual mem::StringView getTypeName() const = 0;
@@ -833,6 +833,22 @@ template <typename F> struct FieldOption<F, const Scheme> {
 };
 template <typename F> struct FieldOption<F, Field> {
 	static inline void assign(F & f, Field && s) { f.tfield = s; }
+};
+
+template <> struct FieldOption<FieldArray, Type> {
+	static inline void assign(FieldArray & f, Type type) {
+		switch (type) {
+		case Type::Integer: f.tfield = Field::Integer("value"); break;
+		case Type::Float: f.tfield = Field::Float("value"); break;
+		case Type::Boolean: f.tfield = Field::Boolean("value"); break;
+		case Type::Text: f.tfield = Field::Text("value"); break;
+		case Type::Bytes: f.tfield = Field::Bytes("value"); break;
+		case Type::Data: f.tfield = Field::Data("value"); break;
+		case Type::Extra: f.tfield = Field::Extra("value"); break;
+		default:
+			break;
+		}
+	}
 };
 
 // view options

@@ -35,6 +35,7 @@ enum class UpdateFlags : uint32_t {
 	NoReturn = 1 << 1,
 	GetAll = 1 << 2,
 	GetForUpdate = 1 << 3,
+	Cached = 1 << 4, // cache 'get' result within transaction
 };
 
 SP_DEFINE_ENUM_AS_MASK(UpdateFlags)
@@ -174,7 +175,6 @@ public:
 	mem::Value get(const mem::StringView &alias, std::initializer_list<const Field *> &&fields, UpdateFlags = UpdateFlags::None);
 	mem::Value get(const mem::Value &id, std::initializer_list<const Field *> &&fields, UpdateFlags = UpdateFlags::None);
 
-
 	// returns Array with zero or more Dictionaries with object data or Null value
 	mem::Value select(const Query &, UpdateFlags = UpdateFlags::None);
 
@@ -253,6 +253,8 @@ public:
 	size_t countField(const mem::Value &, const Field &);
 
 protected:
+	friend class Scheme;
+
 	mem::Set<const Field *> getFieldSet(const Field &f, std::initializer_list<mem::StringView> il) const;
 
 	bool addConflict(const Conflict &);
@@ -260,6 +262,8 @@ protected:
 
 	bool addCondition(const Query::Select &);
 	bool addCondition(const mem::Vector<Query::Select> &);
+
+	mem::Value reduceGetQuery(const Query &query, bool cached);
 
 	mem::Map<const Field *, ConflictData> _conflict;
 	mem::Vector<ConditionData> _conditions;

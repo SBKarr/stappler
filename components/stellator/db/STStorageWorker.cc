@@ -57,13 +57,6 @@ static void prepareGetQuery(Query &query, const mem::StringView &alias, bool for
 	}
 }
 
-static mem::Value reduceGetQuery(mem::Value &&ret) {
-	if (ret.isArray() && ret.size() >= 1) {
-		return ret.getValue(0);
-	}
-	return mem::Value();
-}
-
 void Worker::RequiredFields::clear() {
 	includeFields.clear();
 	excludeFields.clear();
@@ -439,7 +432,7 @@ mem::Value Worker::get(uint64_t oid, UpdateFlags flags) {
 	Query query;
 	if ((flags & UpdateFlags::GetAll) != UpdateFlags::None) { _required.includeAll = true; }
 	prepareGetQuery(query, oid, (flags & UpdateFlags::GetForUpdate) != UpdateFlags::None);
-	return reduceGetQuery(_scheme->selectWithWorker(*this, query));
+	return reduceGetQuery(query, (flags & UpdateFlags::Cached) != UpdateFlags::None);
 }
 
 mem::Value Worker::get(const mem::StringView &alias, UpdateFlags flags) {
@@ -449,7 +442,7 @@ mem::Value Worker::get(const mem::StringView &alias, UpdateFlags flags) {
 	Query query;
 	if ((flags & UpdateFlags::GetAll) != UpdateFlags::None) { _required.includeAll = true; }
 	prepareGetQuery(query, alias, (flags & UpdateFlags::GetForUpdate) != UpdateFlags::None);
-	return reduceGetQuery(_scheme->selectWithWorker(*this, query));
+	return reduceGetQuery(query, (flags & UpdateFlags::Cached) != UpdateFlags::None);
 }
 
 mem::Value Worker::get(const mem::Value &id, UpdateFlags flags) {
@@ -481,7 +474,7 @@ mem::Value Worker::get(uint64_t oid, std::initializer_list<mem::StringView> &&fi
 			query.include(f->getName().str<mem::Interface>());
 		}
 	}
-	return reduceGetQuery(_scheme->selectWithWorker(*this, query));
+	return reduceGetQuery(query, (flags & UpdateFlags::Cached) != UpdateFlags::None);
 }
 mem::Value Worker::get(const mem::StringView &alias, std::initializer_list<mem::StringView> &&fields, UpdateFlags flags) {
 	Query query;
@@ -492,7 +485,7 @@ mem::Value Worker::get(const mem::StringView &alias, std::initializer_list<mem::
 			query.include(f->getName().str<mem::Interface>());
 		}
 	}
-	return reduceGetQuery(_scheme->selectWithWorker(*this, query));
+	return reduceGetQuery(query, (flags & UpdateFlags::Cached) != UpdateFlags::None);
 }
 mem::Value Worker::get(const mem::Value &id, std::initializer_list<mem::StringView> &&fields, UpdateFlags flags) {
 	if (id.isDictionary()) {
@@ -523,7 +516,7 @@ mem::Value Worker::get(uint64_t oid, std::initializer_list<const char *> &&field
 			query.include(f->getName().str<mem::Interface>());
 		}
 	}
-	return reduceGetQuery(_scheme->selectWithWorker(*this, query));
+	return reduceGetQuery(query, (flags & UpdateFlags::Cached) != UpdateFlags::None);
 }
 mem::Value Worker::get(const mem::StringView &alias, std::initializer_list<const char *> &&fields, UpdateFlags flags) {
 	Query query;
@@ -534,7 +527,7 @@ mem::Value Worker::get(const mem::StringView &alias, std::initializer_list<const
 			query.include(f->getName().str<mem::Interface>());
 		}
 	}
-	return reduceGetQuery(_scheme->selectWithWorker(*this, query));
+	return reduceGetQuery(query, (flags & UpdateFlags::Cached) != UpdateFlags::None);
 }
 mem::Value Worker::get(const mem::Value &id, std::initializer_list<const char *> &&fields, UpdateFlags flags) {
 	if (id.isDictionary()) {
@@ -563,7 +556,7 @@ mem::Value Worker::get(uint64_t oid, std::initializer_list<const Field *> &&fiel
 	for (auto &it : fields) {
 		query.include(it->getName().str<mem::Interface>());
 	}
-	return reduceGetQuery(_scheme->selectWithWorker(*this, query));
+	return reduceGetQuery(query, (flags & UpdateFlags::Cached) != UpdateFlags::None);
 }
 mem::Value Worker::get(const mem::StringView &alias, std::initializer_list<const Field *> &&fields, UpdateFlags flags) {
 	Query query;
@@ -572,7 +565,7 @@ mem::Value Worker::get(const mem::StringView &alias, std::initializer_list<const
 	for (auto &it : fields) {
 		query.include(it->getName().str<mem::Interface>());
 	}
-	return reduceGetQuery(_scheme->selectWithWorker(*this, query));
+	return reduceGetQuery(query, (flags & UpdateFlags::Cached) != UpdateFlags::None);
 }
 mem::Value Worker::get(const mem::Value &id, std::initializer_list<const Field *> &&fields, UpdateFlags flags) {
 	if (id.isDictionary()) {
@@ -601,7 +594,7 @@ mem::Value Worker::get(uint64_t oid, mem::StringView it, UpdateFlags flags) {
 	if (auto f = _scheme->getField(it)) {
 		query.include(f->getName().str<mem::Interface>());
 	}
-	return reduceGetQuery(_scheme->selectWithWorker(*this, query));
+	return reduceGetQuery(query, (flags & UpdateFlags::Cached) != UpdateFlags::None);
 }
 mem::Value Worker::get(const mem::StringView &alias, mem::StringView it, UpdateFlags flags) {
 	Query query;
@@ -610,7 +603,7 @@ mem::Value Worker::get(const mem::StringView &alias, mem::StringView it, UpdateF
 	if (auto f = _scheme->getField(it)) {
 		query.include(f->getName().str<mem::Interface>());
 	}
-	return reduceGetQuery(_scheme->selectWithWorker(*this, query));
+	return reduceGetQuery(query, (flags & UpdateFlags::Cached) != UpdateFlags::None);
 }
 mem::Value Worker::get(const mem::Value &id, mem::StringView it, UpdateFlags flags) {
 	if (id.isDictionary()) {
@@ -1068,6 +1061,30 @@ bool Worker::addCondition(const mem::Vector<Query::Select> &sel) {
 		}
 	}
 	return true;
+}
+
+mem::Value Worker::reduceGetQuery(const Query &query, bool cached) {
+	if (auto id = query.getSingleSelectId()) {
+		if (cached && !_scheme->isDetouched()) {
+			if (auto v = _transaction.getObject(id)) {
+				return v;
+			}
+		}
+		auto ret = _scheme->selectWithWorker(*this, query);
+		if (ret.isArray() && ret.size() >= 1) {
+			if (cached && !_scheme->isDetouched()) {
+				_transaction.setObject(id, mem::Value(ret.getValue(0)));
+			}
+			return ret.getValue(0);
+		}
+	} else {
+		auto ret = _scheme->selectWithWorker(*this, query);
+		if (ret.isArray() && ret.size() >= 1) {
+			return ret.getValue(0);
+		}
+	}
+
+	return mem::Value();
 }
 
 NS_DB_END

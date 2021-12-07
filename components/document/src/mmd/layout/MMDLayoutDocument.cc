@@ -172,13 +172,13 @@ void LayoutDocument::onTag(layout::Style &style, StringView tag, StringView pare
 
 	if (tag == "h1") {
 		style.set(Parameter::create<ParameterName::MarginTop>(Metric(0.8f, Metric::Units::Em)), true);
-		style.set(Parameter::create<ParameterName::FontSize>(uint8_t(32)), true);
+		style.set(Parameter::create<ParameterName::FontSize>(FontSize(32)), true);
 		style.set(Parameter::create<ParameterName::FontWeight>(FontWeight::W200), true);
 		style.set(Parameter::create<ParameterName::Opacity>(uint8_t(222)), true);
 
 	} else if (tag == "h2") {
 		style.set(Parameter::create<ParameterName::MarginTop>(Metric(0.8f, Metric::Units::Em)), true);
-		style.set(Parameter::create<ParameterName::FontSize>(uint8_t(28)), true);
+		style.set(Parameter::create<ParameterName::FontSize>(FontSize(28)), true);
 		style.set(Parameter::create<ParameterName::FontWeight>(FontWeight::W400), true);
 		style.set(Parameter::create<ParameterName::Opacity>(uint8_t(222)), true);
 
@@ -196,7 +196,7 @@ void LayoutDocument::onTag(layout::Style &style, StringView tag, StringView pare
 
 	} else if (tag == "h5") {
 		style.set(Parameter::create<ParameterName::MarginTop>(Metric(0.8f, Metric::Units::Em)), true);
-		style.set(Parameter::create<ParameterName::FontSize>(uint8_t(18)), true);
+		style.set(Parameter::create<ParameterName::FontSize>(FontSize(18)), true);
 		style.set(Parameter::create<ParameterName::FontWeight>(FontWeight::W400), true);
 		style.set(Parameter::create<ParameterName::Opacity>(uint8_t(222)), true);
 

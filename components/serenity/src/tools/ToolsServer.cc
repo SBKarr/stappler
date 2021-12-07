@@ -40,15 +40,8 @@ void ServerGui::defineBasics(pug::Context &exec, Request &req, User *u) {
 			pair("cancel", data::Value(Tools_getCancelUrl(req)))
 		}));
 
-		if (auto iface = dynamic_cast<db::sql::SqlHandle *>(req.storage().interface())) {
-			iface->makeQuery([&] (db::sql::SqlQuery &query) {
-				query << "SELECT current_database();";
-				iface->selectQuery(query, [&] (db::sql::Result &qResult) {
-					if (!qResult.empty()) {
-						exec.set("dbName", data::Value(qResult.front().toString(0)));
-					}
-				});
-			});
+		if (req.storage().interface()) {
+			exec.set("dbName", data::Value(req.storage().interface()->getDatabaseName()));
 		}
 
 		data::Value components;

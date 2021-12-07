@@ -35,6 +35,9 @@ THE SOFTWARE.
 #define NS_DB_PQ_BEGIN	namespace db { namespace pq {
 #define NS_DB_PQ_END	} }
 
+#define NS_DB_SQLITE_BEGIN	namespace db { namespace sqlite {
+#define NS_DB_SQLITE_END	} }
+
 #ifdef SPAPR
 
 // use Serenity config

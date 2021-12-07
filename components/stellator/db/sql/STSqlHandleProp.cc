@@ -71,8 +71,8 @@ size_t SqlHandle::getFileCount(Worker &w, SqlQuery &query, uint64_t oid, uint64_
 	}
 
 	selectQuery(query, [&] (Result &result) {
-		if (result && result.nrows() == 1) {
-			ret = size_t(result.front().toInteger(0));
+		if (!result.empty()) {
+			ret = size_t(result.current().toInteger(0));
 		}
 	});
 	return ret;
@@ -90,8 +90,8 @@ size_t SqlHandle::getArrayCount(Worker &w, SqlQuery &query, uint64_t oid, const 
 		.where(mem::toString(w.scheme().getName(), "_id"), Comparation::Equal, oid).finalize();
 
 	selectQuery(query, [&] (Result &result) {
-		if (result && result.nrows() == 1) {
-			ret = size_t(result.front().toInteger(0));
+		if (!result.empty()) {
+			ret = size_t(result.current().toInteger(0));
 		}
 	});
 	return ret;
@@ -144,8 +144,8 @@ size_t SqlHandle::getObjectCount(Worker &w, SqlQuery &query, uint64_t oid, uint6
 		}
 
 		selectQuery(query, [&] (Result &result) {
-			if (result && result.nrows() == 1) {
-				ret = size_t(result.front().toInteger(0));
+			if (!result.empty()) {
+				ret = size_t(result.current().toInteger(0));
 			}
 		});
 	}
@@ -194,8 +194,8 @@ size_t SqlHandle::getSetCount(Worker &w, SqlQuery &query, uint64_t oid, const Fi
 			return 0;
 		}
 		selectQuery(query, [&] (Result &result) {
-			if (result && result.nrows() == 1) {
-				ret = size_t(result.front().toInteger(0));
+			if (!result.empty()) {
+				ret = size_t(result.current().toInteger(0));
 			}
 		});
 	}
@@ -239,8 +239,8 @@ size_t SqlHandle::getViewCount(Worker &w, SqlQuery &query, uint64_t oid, const F
 		query.finalize();
 
 		selectQuery(query, [&] (Result &result) {
-			if (result && result.nrows() == 1) {
-				ret = size_t(result.front().toInteger(0));
+			if (!result.empty()) {
+				ret = size_t(result.current().toInteger(0));
 			}
 		});
 	}
@@ -263,8 +263,8 @@ size_t SqlHandle::getSimpleCount(Worker &w, SqlQuery &query, uint64_t oid, const
 	size_t ret = 0;
 	query.select().aggregate("COUNT", f.getName()).from(w.scheme().getName()).where("__oid", Comparation::Equal, oid).finalize();
 	selectQuery(query, [&] (Result &result) {
-		if (result && result.nrows() == 1) {
-			ret = size_t(result.front().toInteger(0));
+		if (!result.empty()) {
+			ret = size_t(result.current().toInteger(0));
 		}
 	});
 	return ret;

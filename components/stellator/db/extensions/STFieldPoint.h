@@ -32,7 +32,7 @@ struct FieldPoint : db::FieldCustom {
 	FieldPoint(mem::String && n, Args && ... args) : FieldCustom(std::move(n), std::forward<Args>(args)...) { }
 
 	virtual bool transformValue(const db::Scheme &, const mem::Value &obj, mem::Value &val, bool isCreate) const override;
-	virtual mem::Value readFromStorage(db::ResultInterface &iface, size_t row, size_t field) const override;
+	virtual mem::Value readFromStorage(const db::ResultCursor &iface, size_t field) const override;
 	virtual bool writeToStorage(db::QueryInterface &iface, mem::StringStream &query, const mem::Value &val) const override;
 	virtual mem::StringView getTypeName() const override;
 	virtual bool isSimpleLayout() const override;

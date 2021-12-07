@@ -469,8 +469,8 @@ size_t SqlHandle::count(Worker &worker, const db::Query &q) {
 
 			query.finalize();
 			selectQuery(query, [&] (Result &res) {
-				if (res.nrows() > 0) {
-					ret = res.front().toInteger(0);
+				if (!res.empty()) {
+					ret = res.current().toInteger(0);
 				}
 			});
 		} else if (auto f = scheme.getField(ordField)) {
@@ -663,7 +663,7 @@ mem::Vector<int64_t> SqlHandle::getReferenceParents(const Scheme &objectScheme, 
 				.where(mem::toString(objectScheme.getName(), "_id"), Comparation::Equal, oid);
 
 			selectQuery(q, [&] (Result &res) {
-				vec.reserve(res.nrows());
+				vec.reserve(res.getRowsHint());
 				for (auto it : res) {
 					if (auto id = it.toInteger(0)) {
 						vec.emplace_back(id);

@@ -50,7 +50,7 @@ class Query;
 class Interface;
 class Binder;
 class QueryInterface;
-class ResultInterface;
+class ResultCursor;
 
 class Scheme;
 class Field;

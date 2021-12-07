@@ -195,33 +195,37 @@ public:
 	virtual void clear() = 0;
 };
 
-class ResultInterface {
+class ResultCursor {
 public:
-	virtual ~ResultInterface() = default;
+	virtual ~ResultCursor() = default;
 
 	virtual bool isBinaryFormat(size_t field) const = 0;
 
-	virtual bool isNull(size_t row, size_t field) = 0;
+	virtual bool isNull(size_t field) const = 0;
 
-	virtual mem::StringView toString(size_t row, size_t field) = 0;
-	virtual stappler::BytesView toBytes(size_t row, size_t field) = 0;
+	virtual mem::StringView toString(size_t field) const = 0;
+	virtual stappler::BytesView toBytes(size_t field) const = 0;
 
-	virtual int64_t toInteger(size_t row, size_t field) = 0;
-	virtual double toDouble(size_t row, size_t field) = 0;
-	virtual bool toBool(size_t row, size_t field) = 0;
+	virtual int64_t toInteger(size_t field) const = 0;
+	virtual double toDouble(size_t field) const = 0;
+	virtual bool toBool(size_t field) const = 0;
 
-	virtual mem::Value toTypedData(size_t row, size_t field) = 0;
+	virtual mem::Value toTypedData(size_t field) const = 0;
 
-	virtual int64_t toId() = 0;
+	virtual int64_t toId() const = 0;
 
-	virtual mem::StringView getFieldName(size_t field) = 0;
+	virtual mem::StringView getFieldName(size_t field) const = 0;
 
 	virtual bool isSuccess() const = 0;
-	virtual size_t getRowsCount() const = 0;
+	virtual bool isEmpty() const = 0;
+	virtual bool isEnded() const = 0;
 	virtual size_t getFieldsCount() const = 0;
 	virtual size_t getAffectedRows() const = 0;
+	virtual size_t getRowsHint() const = 0;
 
 	virtual mem::Value getInfo() const = 0;
+	virtual bool next() = 0;
+	virtual void reset() = 0;
 	virtual void clear() = 0;
 };
 

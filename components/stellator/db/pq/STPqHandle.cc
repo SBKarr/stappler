@@ -396,7 +396,7 @@ Handle::Handle(const Driver *d, Driver::Handle h) : driver(d), handle(h) {
 
 			performSimpleSelect("SELECT current_database();", [&] (db::sql::Result &qResult) {
 				if (!qResult.empty()) {
-					dbName = qResult.front().toString(0).pdup();
+					dbName = qResult.current().toString(0).pdup();
 				}
 			});
 		}
@@ -456,7 +456,7 @@ bool Handle::selectQuery(const sql::SqlQuery &query, const stappler::Callback<vo
 	}
 
 	ExecParamData data(query);
-	ResultInterface res(driver, driver->exec(conn, query.getQuery().weak().data(), queryInterface->params.size(),
+	ResultCursor res(driver, driver->exec(conn, query.getQuery().weak().data(), queryInterface->params.size(),
 			data.paramValues, data.paramLengths, data.paramFormats, 1));
 	if (!res.isSuccess()) {
 		auto info = res.getInfo();
@@ -485,7 +485,7 @@ bool Handle::performSimpleQuery(const mem::StringView &query, const mem::Callbac
 		return false;
 	}
 
-	ResultInterface res(driver, driver->exec(conn, query.data()));
+	ResultCursor res(driver, driver->exec(conn, query.data()));
 	lastError = res.getError();
 	if (!res.isSuccess()) {
 		auto info = res.getInfo();
@@ -507,7 +507,7 @@ bool Handle::performSimpleSelect(const mem::StringView &query, const stappler::C
 		return false;
 	}
 
-	ResultInterface res(driver, driver->exec(conn, query.data(), 0, nullptr, nullptr, nullptr, 1));
+	ResultCursor res(driver, driver->exec(conn, query.data(), 0, nullptr, nullptr, nullptr, 1));
 	lastError = res.getError();
 
 	if (res.isSuccess()) {
@@ -530,7 +530,7 @@ bool Handle::performSimpleSelect(const mem::StringView &query, const stappler::C
 }
 
 bool Handle::isSuccess() const {
-	return ResultInterface::pgsql_is_success(lastError);
+	return ResultCursor::pgsql_is_success(lastError);
 }
 
 bool Handle::beginTransaction_pg(TransactionLevel l) {

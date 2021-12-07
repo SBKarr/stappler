@@ -54,6 +54,8 @@ public:
 
 	virtual db::User * authorizeUser(const db::Auth &auth, const mem::StringView &iname, const mem::StringView &password) override;
 
+	virtual bool isNotificationsSupported() const { return false; }
+
 	virtual void makeSessionsCleanup() override;
 	void finalizeBroadcast();
 	virtual int64_t processBroadcasts(const mem::Callback<void(stappler::BytesView)> &, int64_t value) override;

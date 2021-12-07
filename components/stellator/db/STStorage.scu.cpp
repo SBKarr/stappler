@@ -50,5 +50,9 @@ THE SOFTWARE.
 #include "STPqHandleInit.cc"
 #include "STPqDriver.cc"
 
+#include "STSqliteHandle.cc"
+#include "STSqliteHandleInit.cc"
+#include "STSqliteDriver.cc"
+
 #include "STFieldIntArray.cc"
 #include "STFieldPoint.cc"

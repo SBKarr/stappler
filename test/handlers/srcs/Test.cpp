@@ -80,11 +80,12 @@ protected:
 	Scheme _subobjects = Scheme("subobjects");
 	Scheme _images = Scheme("images");
 	Scheme _test = Scheme("test");
+	Scheme _detached = Scheme("detached", Scheme::Detouched);
 };
 
 TestHandler::TestHandler(Server &serv, const String &name, const data::Value &dict)
 : ServerComponent(serv, name, dict) {
-	exportValues(_objects, _refs, _subobjects, _images, _test);
+	exportValues(_objects, _refs, _subobjects, _images, _test, _detached);
 
 	using namespace storage;
 
@@ -155,6 +156,13 @@ TestHandler::TestHandler(Server &serv, const String &name, const data::Value &di
 		Field::Custom(new FieldBigIntArray("clusters")),
 		Field::Custom(new FieldIntArray("refs")), // PkkId
 		Field::Custom(new FieldPoint("coords")),
+	});
+
+	_detached.define({
+		Field::Integer("time", storage::Flags::Indexed),
+		Field::Text("text", storage::MinLength(3)),
+		Field::Array("textArray", Type::Text),
+		Field::Array("integerArray", Type::Integer),
 	});
 }
 

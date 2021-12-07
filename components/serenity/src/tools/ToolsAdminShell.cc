@@ -427,6 +427,7 @@ struct CreateCmd : ResourceCmd {
 			r.skipChars<StringView::CharGroup<CharGroupId::WhiteSpace>>();
 		}
 
+		bool success = false;
 		data::Value patch = (r.is('{') || r.is('[') || r.is('(')) ? data::read(r) : UrlView::parseArgs(r, 1_KiB);
 		h.performWithStorage([&] (const db::Transaction &t) {
 			if (auto r = acquireResource(t, h, schemeName, path, StringView())) {
@@ -434,6 +435,7 @@ struct CreateCmd : ResourceCmd {
 				if (r->prepareCreate()) {
 					auto ret = r->createObject(patch, f);
 					h.sendData(ret);
+					success = true;
 				} else {
 					h.sendError(toString("Action for scheme ", schemeName, " is forbidden for ", h.getUser()->getName()));
 				}
@@ -441,8 +443,10 @@ struct CreateCmd : ResourceCmd {
 			}
 		});
 
-		h.sendData(patch);
-		h.sendError("Fail to create object with data:");
+		if (!success) {
+			h.sendData(patch);
+			h.sendError("Fail to create object with data:");
+		}
 
 		return true;
 	}

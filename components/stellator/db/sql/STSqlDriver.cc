@@ -22,6 +22,7 @@
 
 #include "STSqlDriver.h"
 #include "STPqDriver.h"
+#include "STSqliteDriver.h"
 
 NS_DB_SQL_BEGIN
 
@@ -33,6 +34,8 @@ Driver *Driver::open(mem::pool_t *pool, mem::StringView path, const void *extern
 	} else if (path.starts_with("pgsql:")) {
 		path += "pgsql:"_len;
 		ret = pq::Driver::open(path, external);
+	} else if (path == "sqlite3") {
+		ret = sqlite::Driver::open(path);
 	}
 	mem::pool::pop();
 	return ret;

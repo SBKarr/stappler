@@ -53,6 +53,8 @@ public:
 	Driver::Handle getHandle() const;
 	Driver::Connection getConnection() const;
 
+	virtual bool isNotificationsSupported() const override { return true; }
+
 	virtual void makeQuery(const mem::Callback<void(sql::SqlQuery &)> &cb) override;
 
 	virtual bool selectQuery(const db::sql::SqlQuery &, const mem::Callback<void(sql::Result &)> &cb,
@@ -77,7 +79,7 @@ protected:
 	void cancelTransaction_pg();
 	bool endTransaction_pg();
 
-	using ViewIdVec = mem::Vector<stappler::Pair<const Scheme::ViewScheme *, int64_t>>;
+	using ViewIdVec = mem::Vector<mem::Pair<const Scheme::ViewScheme *, int64_t>>;
 
 	const Driver *driver = nullptr;
 	Driver::Handle handle = Driver::Handle(nullptr);

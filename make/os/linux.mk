@@ -35,8 +35,8 @@ OSTYPE_SERENITY_LIBS := -lpthread \
 	-l:libcurl.a -l:libfreetype.a -l:libngtcp2.a  -l:libnghttp3.a -l:libngtcp2_crypto_gnutls.a \
 	-l:libgnutls.a -l:libhogweed.a -l:libnettle.a -l:libgmp.a -l:libidn2.a -l:libunistring.a \
 	-l:libbrotlidec.a -l:libbrotlienc.a -l:libbrotlicommon.a \
-	-l:libpng16.a -l:libgif.a -l:libjpeg.a -l:libwebp.a \
-	-lz -lpq
+	-l:libpng16.a -l:libgif.a -l:libjpeg.a -l:libwebp.a -l:libsqlite3.a \
+	-lz
 
 OSTYPE_CLI_LIBS += $(OSTYPE_COMMON_LIBS) -l:libsqlite3.a -ldl
 

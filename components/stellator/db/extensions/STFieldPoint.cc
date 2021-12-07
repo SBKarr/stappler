@@ -31,9 +31,9 @@ bool FieldPoint::transformValue(const db::Scheme &, const mem::Value &obj, mem::
 	return false;
 }
 
-mem::Value FieldPoint::readFromStorage(db::ResultInterface &iface, size_t row, size_t field) const {
+mem::Value FieldPoint::readFromStorage(const db::ResultCursor &iface, size_t field) const {
 	if (iface.isBinaryFormat(field)) {
-		auto r = stappler::BytesViewNetwork(iface.toBytes(row, field));
+		auto r = stappler::BytesViewNetwork(iface.toBytes(field));
 
 		if (r.size() == 16) {
 			auto x = r.readFloat64();
