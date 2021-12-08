@@ -185,14 +185,14 @@ void SqlHandle::makeSessionsCleanup() {
 		}
 
 		query.clear();
-		query << "SELECT obj.__oid AS id FROM __files obj WHERE ";
+		query << "SELECT obj.__oid AS id FROM __files obj WHERE obj.__oid IN (";
 
 		bool first = true;
 		for (auto it : res) {
-			if (first) { first = false; } else { query << " OR "; }
-			query << "obj.__oid=" << it.at(0);
+			if (first) { first = false; } else { query << ","; }
+			query << it.at(0);
 		}
-		query << ";";
+		query << ");";
 		performSimpleSelect(query.weak(), [&] (Result &res) {
 			if (!res.empty()) {
 				query.clear();

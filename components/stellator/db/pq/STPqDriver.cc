@@ -313,6 +313,8 @@ bool Driver::init(Handle handle, const mem::Vector<mem::StringView> &dbs) {
 			Driver_insert_sorted(_storageTypes, uint32_t(tid), Interface::StorageType::VarChar);
 		} else if (tname == "text") {
 			Driver_insert_sorted(_storageTypes, uint32_t(tid), Interface::StorageType::Text);
+		} else if (tname == "name") {
+			Driver_insert_sorted(_storageTypes, uint32_t(tid), Interface::StorageType::Text);
 		} else if (tname == "numeric") {
 			Driver_insert_sorted(_storageTypes, uint32_t(tid), Interface::StorageType::Numeric);
 		} else if (tname == "tsvector") {
@@ -668,7 +670,50 @@ bool ResultCursor::isNull(size_t field) const {
 }
 
 mem::StringView ResultCursor::toString(size_t field) const {
-	return mem::StringView(driver->getValue(result, currentRow, field), driver->getLength(result, currentRow, field));
+	if (isBinaryFormat(field)) {
+		auto t = driver->getType(result, field);
+		auto s = driver->getTypeById(t);
+		switch (s) {
+		case Interface::StorageType::Unknown:
+			messages::error("DB", "Unknown type conversion", mem::Value(driver->getTypeNameById(t)));
+			return mem::StringView();
+			break;
+		case Interface::StorageType::TsVector:
+			return mem::StringView();
+			break;
+		case Interface::StorageType::Bool:
+			return mem::StringView(mem::toString(toBool(field))).pdup();
+			break;
+		case Interface::StorageType::Char:
+			break;
+		case Interface::StorageType::Float4:
+		case Interface::StorageType::Float8:
+			return mem::StringView(mem::toString(toDouble(field))).pdup();
+			break;
+		case Interface::StorageType::Int2:
+		case Interface::StorageType::Int4:
+		case Interface::StorageType::Int8:
+			return mem::StringView(mem::toString(toInteger(field))).pdup();
+			break;
+		case Interface::StorageType::Text:
+		case Interface::StorageType::VarChar:
+			return mem::StringView(driver->getValue(result, currentRow, field), driver->getLength(result, currentRow, field));
+			break;
+		case Interface::StorageType::Numeric: {
+			stappler::BytesViewNetwork r((const uint8_t *)driver->getValue(result, currentRow, field),
+					driver->getLength(result, currentRow, field));
+			auto str = pg_numeric_to_string(r);
+			return mem::StringView(str).pdup();
+			break;
+		}
+		case Interface::StorageType::Bytes:
+			return mem::StringView(stappler::base16::encode(toBytes(field))).pdup();
+			break;
+		}
+		return mem::StringView();
+	} else {
+		return mem::StringView(driver->getValue(result, currentRow, field), driver->getLength(result, currentRow, field));
+	}
 }
 
 mem::BytesView ResultCursor::toBytes(size_t field) const {
