@@ -80,8 +80,14 @@ void Resource::resolveOptionForString(const String &str) {
 		r.trimChars<StringView::CharGroup<CharGroupId::WhiteSpace>>();
 		String token(toString('$', r));
 		_resolve |= Query::decodeResolve(token);
-		_extraResolves.emplace_back(move(token));
+		mem::emplace_ordered(_extraResolves, move(token));
 	});
+}
+
+void Resource::addExtraResolveField(StringView str) {
+	if (mem::emplace_ordered(_extraResolves, str.str<mem::Interface>())) {
+		_isResolvesUpdated = true;
+	}
 }
 
 void Resource::setUser(User *u) {
@@ -123,8 +129,11 @@ void Resource::applyQuery(const data::Value &query) {
 }
 
 void Resource::prepare(QueryList::Flags flags) {
+	if (_isResolvesUpdated) {
+		_queries.resolve(_extraResolves);
+		_isResolvesUpdated = false;
+	}
 	_queries.addFlag(flags);
-	_queries.resolve(_extraResolves);
 }
 
 const db::QueryList &Resource::getQueries() const {
@@ -448,6 +457,10 @@ void Resource::resolveResult(const QueryFieldResolver &res, data::Value &obj, ui
 }
 
 void Resource::resolveResult(const QueryList &l, data::Value &obj) {
+	if (_isResolvesUpdated) {
+		_queries.resolve(_extraResolves);
+		_isResolvesUpdated = false;
+	}
 	resolveResult(l.getFields(), obj, 0, l.getResolveDepth());
 }
 

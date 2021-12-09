@@ -52,6 +52,8 @@ public:
 	mem::StringView getDbName(Handle) const;
 	mem::Value getInfo(Connection, int) const;
 
+	void setUserId(Handle, int64_t) const;
+
 protected:
 	Driver(mem::StringView);
 

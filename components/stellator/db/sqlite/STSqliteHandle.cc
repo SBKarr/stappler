@@ -354,6 +354,22 @@ bool Handle::selectQuery(const sql::SqlQuery &query, const stappler::Callback<vo
 	}
 
 	err = sqlite3_step(stmt);
+	if (err != SQLITE_OK && err != SQLITE_DONE && err != SQLITE_ROW) {
+		auto info = driver->getInfo(conn, err);
+		if (errCb) {
+			errCb(info);
+		}
+#if DEBUG
+		s_logMutex.lock();
+		std::cout << query.getQuery().weak() << "\n";
+		std::cout << mem::EncodeFormat::Pretty << info << "\n";
+		info.setString(query.getQuery().str(), "query");
+		s_logMutex.unlock();
+#endif
+		sqlite3_finalize(stmt);
+		cancelTransaction();
+		return false;
+	}
 
 	ResultCursor cursor(driver, conn, Driver::Result(stmt), err);
 	db::sql::Result ret(&cursor);
@@ -396,6 +412,24 @@ bool Handle::performSimpleQuery(const mem::StringView &query, const mem::Callbac
 		}
 
 		err = sqlite3_step(stmt);
+
+		if (err != SQLITE_OK && err != SQLITE_DONE && err != SQLITE_ROW) {
+			auto info = driver->getInfo(conn, err);
+			if (errCb) {
+				errCb(info);
+			}
+	#if DEBUG
+			s_logMutex.lock();
+			std::cout << nextQuery << "\n";
+			std::cout << mem::EncodeFormat::Pretty << info << "\n";
+			info.setString(nextQuery, "query");
+			s_logMutex.unlock();
+	#endif
+			sqlite3_finalize(stmt);
+			cancelTransaction();
+			return false;
+		}
+
 		success = ResultCursor::statusIsSuccess(err);
 		sqlite3_finalize(stmt);
 	}
@@ -436,9 +470,16 @@ bool Handle::isSuccess() const {
 }
 
 bool Handle::beginTransaction() {
+	if (transactionStatus != db::TransactionStatus::None) {
+		return false;
+	}
+
+	driver->setUserId(handle, internals::getUserIdFromContext());
+
 	switch (level) {
 	case TransactionLevel::Deferred:
 		if (performSimpleQuery("BEGIN DEFERRED"_weak)) {
+			std::cout << "BEGIN DEFERRED\n";
 			level = TransactionLevel::Deferred;
 			transactionStatus = db::TransactionStatus::Commit;
 			return true;
@@ -446,6 +487,7 @@ bool Handle::beginTransaction() {
 		break;
 	case TransactionLevel::Immediate:
 		if (performSimpleQuery("BEGIN IMMEDIATE"_weak)) {
+			std::cout << "BEGIN IMMEDIATE\n";
 			level = TransactionLevel::Immediate;
 			transactionStatus = db::TransactionStatus::Commit;
 			return true;
@@ -453,6 +495,7 @@ bool Handle::beginTransaction() {
 		break;
 	case TransactionLevel::Exclusive:
 		if (performSimpleQuery("BEGIN EXCLUSIVE"_weak)) {
+			std::cout << "BEGIN EXCLUSIVE\n";
 			level = TransactionLevel::Exclusive;
 			transactionStatus = db::TransactionStatus::Commit;
 			return true;
@@ -469,6 +512,7 @@ bool Handle::endTransaction() {
 	case db::TransactionStatus::Commit:
 		transactionStatus = db::TransactionStatus::None;
 		if (performSimpleQuery("COMMIT"_weak)) {
+			std::cout << "COMMIT\n";
 			finalizeBroadcast();
 			return true;
 		}
@@ -476,6 +520,7 @@ bool Handle::endTransaction() {
 	case db::TransactionStatus::Rollback:
 		transactionStatus = db::TransactionStatus::None;
 		if (performSimpleQuery("ROLLBACK"_weak)) {
+			std::cout << "ROLLBACK\n";
 			finalizeBroadcast();
 			return false;
 		}

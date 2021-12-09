@@ -39,13 +39,13 @@ CREATE TABLE IF NOT EXISTS "__sessions" (
 ) WITHOUT ROWID;
 
 CREATE TABLE IF NOT EXISTS "__broadcasts" (
-	id BIGINT NOT NULL PRIMARY KEY,
+	id INTEGER PRIMARY KEY AUTOINCREMENT,
 	date BIGINT NOT NULL,
 	msg BLOB
 );
 
 CREATE TABLE IF NOT EXISTS "__login" (
-	id BIGINT NOT NULL PRIMARY KEY,
+	id INTEGER PRIMARY KEY AUTOINCREMENT,
 	"user" BIGINT NOT NULL,
 	name TEXT NOT NULL,
 	password BLOB NOT NULL,
@@ -90,6 +90,131 @@ struct IndexRec {
 	IndexRec(mem::Vector<mem::String> &&fields, bool unique = false) : fields(std::move(fields)), unique(unique) { }
 };
 
+struct TriggerRec {
+	enum Type {
+		Delete,
+		Update,
+		Insert
+	};
+
+	enum Bind {
+		Before,
+		After
+	};
+
+	Type type = Type::Delete;
+	Bind bind = Bind::Before;
+	const Field *rootField = nullptr;
+	const Scheme *rootScheme = nullptr;
+	mem::String sourceTable;
+	mem::String sourceField;
+	mem::String targetTable;
+	mem::String targetField;
+	mem::String tagField;
+	RemovePolicy onRemove = RemovePolicy::Null;
+
+	TriggerRec(mem::StringView def) {
+		uint32_t valueIdx = 0;
+		while (!def.empty()) {
+			auto value = def.readUntil<mem::StringView::Chars<':'>>();
+			switch (valueIdx) {
+			case 0:
+				if (value == "BEFORE") {
+					bind = Before;
+				} else if (value == "AFTER") {
+					bind = After;
+				} else {
+					return;
+				}
+				break;
+			case 1:
+				if (value == "DELETE") {
+					type = Delete;
+				} else if (value == "UPDATE") {
+					type = Update;
+				} else if (value == "INSERT") {
+					type = Insert;
+				} else {
+					return;
+				}
+				break;
+			case 2: {
+				auto table = value.readUntil<mem::StringView::Chars<'@'>>();
+				if (value.is('@')) {
+					++ value;
+					sourceTable = table.str<mem::Interface>();
+					sourceField = value.str<mem::Interface>();
+				} else {
+					return;
+				}
+				break;
+			}
+			case 3: {
+				auto table = value.readUntil<mem::StringView::Chars<'@'>>();
+				if (value.is('@')) {
+					++ value;
+					targetTable = table.str<mem::Interface>();
+					targetField = value.str<mem::Interface>();
+				} else {
+					return;
+				}
+				break;
+			}
+			case 4:
+				if (value == "CASCADE") {
+					onRemove = RemovePolicy::Cascade;
+				} else if (value == "RESTRICT") {
+					onRemove = RemovePolicy::Restrict;
+				} else if (value == "REF") {
+					onRemove = RemovePolicy::Reference;
+				} else if (value == "SREF") {
+					onRemove = RemovePolicy::StrongReference;
+				} else {
+					return;
+				}
+				break;
+			default:
+				break;
+			}
+			if (def.is(':')) {
+				++ def;
+				++ valueIdx;
+			}
+		}
+	}
+
+	TriggerRec(Type t, Bind b, mem::StringView sourceTable, mem::StringView sourceField,
+			mem::StringView targetTable, mem::StringView targetField, const Field *f = nullptr)
+	: type(t), bind(b), rootField(f)
+	, sourceTable(sourceTable.str<mem::Interface>())
+	, sourceField(sourceField.str<mem::Interface>())
+	, targetTable(targetTable.str<mem::Interface>())
+	, targetField(targetField.str<mem::Interface>()) { }
+
+	mem::String makeName() const {
+		mem::StringStream stream;
+		switch (bind) {
+		case Bind::Before: stream << "ST_TRIGGER:BEFORE:"; break;
+		case Bind::After: stream << "ST_TRIGGER:AFTER:"; break;
+		}
+		switch (type) {
+		case Type::Delete: stream << "DELETE:"; break;
+		case Type::Update: stream << "UPDATE:"; break;
+		case Type::Insert: stream << "INSERT:"; break;
+		}
+		stream << sourceTable << "@" << sourceField << ":";
+		stream << targetTable << "@" << targetField;
+		switch (onRemove) {
+		case RemovePolicy::Null: break;
+		case RemovePolicy::Cascade: stream << ":CASCADE"; break;
+		case RemovePolicy::Restrict: stream << ":RESTRICT"; break;
+		case RemovePolicy::Reference: stream << ":REF"; break;
+		case RemovePolicy::StrongReference: stream << ":SREF"; break;
+		}
+		return stream.str();
+	}
+};
+
 struct TableRec {
 	using Scheme = db::Scheme;
 
@@ -106,7 +231,7 @@ struct TableRec {
 
 	mem::Map<mem::String, ColRec> cols;
 	mem::Map<mem::String, IndexRec> indexes;
-	mem::Set<mem::String> triggers;
+	mem::Map<mem::String, TriggerRec> triggers;
 	bool exists = false;
 	bool valid = false;
 	bool withOids = false;
@@ -156,6 +281,158 @@ bool ColRec::isNotNull() const { return (flags & Flags::IsNotNull) != Flags::Non
 void TableRec::writeCompareResult(Handle &h, mem::StringStream &outstream,
 		mem::Map<mem::StringView, TableRec> &required, mem::Map<mem::StringView, TableRec> &existed,
 		const mem::Map<mem::StringView, const db::Scheme *> &s) {
+
+	auto writeTriggerHeader = [&] (mem::StringView name, TriggerRec &t, mem::StringView updateField) {
+		outstream << "CREATE TRIGGER IF NOT EXISTS \"" << name << "\"";
+		switch (t.bind) {
+		case TriggerRec::Before: outstream << " BEFORE"; break;
+		case TriggerRec::After: outstream << " AFTER"; break;
+		}
+		switch (t.type) {
+		case TriggerRec::Delete: outstream << " DELETE"; break;
+		case TriggerRec::Update: outstream << " UPDATE";
+			if (!updateField.empty()) {
+				outstream << " OF \"" << updateField << "\"";
+			}
+			break;
+		case TriggerRec::Insert: outstream << " INSERT"; break;
+		}
+		outstream << " ON \"" << t.sourceTable << "\" FOR EACH ROW";
+	};
+
+	auto writeTrigger = [&] (mem::StringView name, TriggerRec &t) {
+		if (t.rootField) {
+			switch (t.rootField->getType()) {
+			case Type::Array:
+				writeTriggerHeader(name, t,mem::StringView());
+				outstream << " BEGIN\n\tDELETE FROM \"" << t.targetTable << "\""
+						" WHERE \"" << t.targetTable << "\".\"" << t.targetField << "\"=OLD.__oid;\nEND;\n";
+				break;
+			case Type::File:
+			case Type::Image:
+				writeTriggerHeader(name, t,mem::StringView());
+				switch (t.type) {
+				case TriggerRec::Delete:
+					outstream << " WHEN OLD.\"" << t.sourceField << "\" IS NOT NULL BEGIN"
+							"\n\tINSERT INTO __removed (__oid) VALUES (OLD.\"" << t.sourceField << "\");\nEND;\n";
+					break;
+				case TriggerRec::Update:
+					outstream << " WHEN OLD.\"" << t.sourceField << "\" IS NOT NULL BEGIN"
+							"\n\tINSERT INTO __removed (__oid) VALUES (OLD.\"" << t.sourceField << "\");\nEND;\n";
+					break;
+				default:
+					break;
+				}
+				break;
+			case Type::Set:
+				switch (static_cast<const db::FieldObject *>(t.rootField->getSlot())->onRemove) {
+				case RemovePolicy::Reference:
+				case RemovePolicy::StrongReference:
+					writeTriggerHeader(name, t,mem::StringView());
+					outstream << " BEGIN\n\tDELETE FROM \"" << t.targetTable << "\" WHERE \""
+							<< t.targetTable << "\".\"" << t.targetField << "\"=OLD.\"" << t.sourceField << "\";\nEND;\n";
+					break;
+				default: break;
+				}
+				break;
+			case Type::View:
+				writeTriggerHeader(name, t,mem::StringView());
+				outstream << " BEGIN\n\tDELETE FROM \"" << t.targetTable << "\" WHERE \""
+						<< t.targetTable << "\".\"" << t.targetField << "\"=OLD.\"" << t.sourceField << "\";\nEND;\n";
+				break;
+			case Type::Object:
+				switch (t.onRemove) {
+				case RemovePolicy::Cascade:
+					writeTriggerHeader(name, t,mem::StringView());
+					outstream << " BEGIN\n\tDELETE FROM \"" << t.targetTable << "\" WHERE \""
+							<< t.targetTable << "\".\"" << t.targetField << "\"=OLD.\"" << t.sourceField << "\";\nEND;\n";
+					break;
+				case RemovePolicy::Restrict:
+					writeTriggerHeader(name, t,mem::StringView());
+					outstream << " BEGIN\n\tSELECT RAISE(ABORT, 'Restrict constraint failed on "
+							<< t.targetTable << "." << t.targetField << "' FROM \""<< t.targetTable << "\" WHERE \""
+							<< t.targetTable << "\".\"" << t.targetField << "\"=OLD.\"" << t.sourceField << "\";\nEND;\n";
+					break;
+				case RemovePolicy::Null:
+				case RemovePolicy::Reference:
+					writeTriggerHeader(name, t,mem::StringView());
+					outstream << " BEGIN\n\tUPDATE \"" << t.targetTable << "\" SET \"" << t.targetField << "\"=NULL WHERE \""
+							<< t.targetTable << "\".\"" << t.targetField << "\"=OLD.\"" << t.sourceField << "\";\nEND;\n";
+					break;
+				case RemovePolicy::StrongReference:
+					// Reverse trigger
+					switch (t.type) {
+					case TriggerRec::Delete:
+						writeTriggerHeader(name, t,mem::StringView());
+						outstream << " BEGIN\n\tDELETE FROM \"" << t.targetTable << "\" WHERE \""
+								<< t.targetTable << "\".\"" << t.targetField << "\"=OLD.\"" << t.sourceField << "\";\nEND;\n";
+						break;
+					case TriggerRec::Update:
+						writeTriggerHeader(name, t, t.sourceField);
+						outstream << " WHEN OLD.\"" << t.sourceField << "\" IS NOT NULL BEGIN"
+								"\n\tDELETE FROM \"" << t.targetTable << "\" WHERE \""
+								<< t.targetTable << "\".\"" << t.targetField << "\"=OLD.\"" << t.sourceField << "\";\nEND;\n";
+						break;
+					default:
+						break;
+					}
+					break;
+				}
+				break;
+			default:
+				break;
+			}
+		} else if (t.rootScheme && t.rootScheme->hasDelta()) {
+			switch (t.type) {
+			case TriggerRec::Delete:
+				writeTriggerHeader(name, t,mem::StringView());
+				outstream << " BEGIN"
+						"\n\tINSERT INTO " << t.targetTable << "(\"object\",\"action\",\"time\",\"user\") VALUES"
+						"(OLD.__oid," << stappler::toInt(Handle::DeltaAction::Delete) << ",stellator_now(),stellator_user());"
+						"\nEND;\n";
+				break;
+			case TriggerRec::Update:
+				writeTriggerHeader(name, t,mem::StringView());
+				outstream << " BEGIN"
+						"\n\tINSERT INTO " << t.targetTable << "(\"object\",\"action\",\"time\",\"user\") VALUES"
+						"(NEW.__oid," << stappler::toInt(Handle::DeltaAction::Update) << ",stellator_now(),stellator_user());"
+						"\nEND;\n";
+				break;
+			case TriggerRec::Insert:
+				writeTriggerHeader(name, t,mem::StringView());
+				outstream << " BEGIN"
+						"\n\tINSERT INTO " << t.targetTable << "(\"object\",\"action\",\"time\",\"user\") VALUES"
+						"(OLD.__oid," << stappler::toInt(Handle::DeltaAction::Create) << ",stellator_now(),stellator_user());"
+						"\nEND;\n";
+				break;
+			}
+		} else if (t.sourceField == "__delta") {
+			switch (t.type) {
+			case TriggerRec::Delete:
+				writeTriggerHeader(name, t,mem::StringView());
+				outstream << " BEGIN"
+						"\n\tINSERT INTO " << t.targetTable << "(\"tag\",\"object\",\"time\",\"user\") VALUES"
+						"(OLD.\"" << t.tagField << "\",OLD.\"" << t.targetField  << "\",stellator_now(),stellator_user());"
+						"\nEND;\n";
+				break;
+			case TriggerRec::Update:
+				writeTriggerHeader(name, t,mem::StringView());
+				outstream << " BEGIN"
+						"\n\tINSERT INTO " << t.targetTable << "(\"tag\",\"object\",\"time\",\"user\") VALUES"
+						"(NEW.\"" << t.tagField << "\",NEW.\"" << t.targetField  << "\",stellator_now(),stellator_user());"
+						"\nEND;\n";
+				break;
+			case TriggerRec::Insert:
+				writeTriggerHeader(name, t,mem::StringView());
+				outstream << " BEGIN"
+						"\n\tINSERT INTO " << t.targetTable << "(\"tag\",\"object\",\"time\",\"user\") VALUES"
+						"(NEW.\"" << t.tagField << "\",NEW.\"" << t.targetField  << "\",stellator_now(),stellator_user());"
+						"\nEND;\n";
+				break;
+			}
+		}
+	};
+
 	for (auto &ex_it : existed) {
 		auto req_it = required.find(ex_it.first);
 		if (req_it != required.end()) {
@@ -197,15 +474,14 @@ void TableRec::writeCompareResult(Handle &h, mem::StringStream &outstream,
 				}
 			}
 
-			/*for (auto &ex_tgr_it : ex_t.triggers) {
-				auto req_tgr_it = req_t.triggers.find(ex_tgr_it);
+			for (auto &ex_tgr_it : ex_t.triggers) {
+				auto req_tgr_it = req_t.triggers.find(ex_tgr_it.first);
 				if (req_tgr_it == req_t.triggers.end()) {
-					stream << "DROP TRIGGER IF EXISTS \"" << ex_tgr_it << "\" ON \"" << ex_it.first << "\";\n";
-					stream << "DROP FUNCTION IF EXISTS \"" << ex_tgr_it << "_func\"();\n";
+					outstream << "DROP TRIGGER IF EXISTS \"" << ex_tgr_it.first << "\";\n";
 				} else {
-					req_t.triggers.erase(ex_tgr_it);
+					req_t.triggers.erase(ex_tgr_it.first);
 				}
-			}*/
+			}
 		}
 	}
 
@@ -240,16 +516,6 @@ void TableRec::writeCompareResult(Handle &h, mem::StringStream &outstream,
 					outstream << " PRIMARY KEY";
 				}
 			}
-
-			/*for (auto &it : t.unique) {
-				outstream << ",\n\tUNIQUE(";
-				bool first = true;
-				for (auto &field : it) {
-					if (first) { first = false; } else { outstream << ", "; }
-					outstream << "\"" << field << "\"";
-				}
-				outstream << ")";
-			}*/
 
 			outstream << "\n);\n";
 		} else {
@@ -287,8 +553,12 @@ void TableRec::writeCompareResult(Handle &h, mem::StringStream &outstream,
 			}
 		}
 
-		/*if (!it.second.triggers.empty()) {
-			auto scheme_it = s.find(it.first);
+		if (!it.second.triggers.empty()) {
+			for (auto & tit : it.second.triggers) {
+				writeTrigger(tit.first, tit.second);
+			}
+
+			/*auto scheme_it = s.find(it.first);
 			if (scheme_it != s.end()) {
 				for (auto & tit : it.second.triggers) {
 					if (mem::StringView(tit).starts_with("_tr_a_")) {
@@ -301,8 +571,8 @@ void TableRec::writeCompareResult(Handle &h, mem::StringStream &outstream,
 				for (auto & tit : it.second.triggers) {
 					writeDeltaTrigger(stream, it.first, it.second, tit);
 				}
-			}
-		}*/
+			}*/
+		}
 	}
 }
 
@@ -311,7 +581,16 @@ mem::Map<mem::StringView, TableRec> TableRec::parse(const db::Interface::Config 
 	mem::Map<mem::StringView, TableRec> tables;
 	for (auto &it : s) {
 		auto scheme = it.second;
-		tables.emplace(scheme->getName(), TableRec(cfg, scheme));
+		tables.emplace(scheme->getName(), TableRec(cfg, scheme)).first->second;
+	}
+
+	for (auto &it : s) {
+		auto scheme = it.second;
+		auto tableIt = tables.find(scheme->getName());
+		if (tableIt == tables.end()) {
+			continue;
+		}
+		auto schemeTable = &tableIt->second;
 
 		// check for extra tables
 		for (auto &fit : scheme->getFields()) {
@@ -337,7 +616,77 @@ mem::Map<mem::StringView, TableRec> TableRec::parse(const db::Interface::Config 
 					table.indexes.emplace(mem::toString(name, "_idx_", source), mem::toString(source, "_id"));
 					table.indexes.emplace(mem::toString(name, "_idx_", target), mem::toString(target, "_id"));
 
-					tables.emplace(mem::StringView(stappler::string::tolower(name)).pdup(), std::move(table));
+					auto extraTable = &tables.emplace(mem::StringView(name).pdup(), std::move(table)).first->second;
+
+					do {
+						TriggerRec trigger(TriggerRec::Delete, TriggerRec::Before, source, "__oid",
+								name, mem::toString(source, "_id"));
+						trigger.rootField = &fit.second;
+						auto triggerName = trigger.makeName();
+						schemeTable->triggers.emplace(std::move(triggerName), std::move(trigger));
+					} while (0);
+
+					do {
+						auto targetIt = tables.find(target);
+						if (targetIt != tables.end()) {
+							TriggerRec trigger(TriggerRec::Delete, TriggerRec::After, target, "__oid",
+									name, mem::toString(target, "_id"));
+							trigger.rootField = &fit.second;
+							trigger.rootScheme = scheme;
+							auto triggerName = trigger.makeName();
+							targetIt->second.triggers.emplace(std::move(triggerName), std::move(trigger));
+						}
+
+						if (ref->onRemove == db::RemovePolicy::StrongReference && targetIt != tables.end()) {
+							TriggerRec trigger(TriggerRec::Delete, TriggerRec::Before, name, mem::toString(target, "_id"),
+									target, "__oid");
+							trigger.rootField = &fit.second;
+							trigger.rootScheme = scheme;
+							auto triggerName = trigger.makeName();
+							extraTable->triggers.emplace(std::move(triggerName), std::move(trigger));
+						}
+					} while (0);
+				}
+			} else if (type == db::Type::Object) {
+				auto ref = static_cast<const db::FieldObject *>(f.getSlot());
+				auto targetIt = tables.find(ref->scheme->getName());
+				if (targetIt != tables.end()) {
+					TriggerRec trigger(TriggerRec::Delete, TriggerRec::Before, ref->scheme->getName(), "__oid",
+							scheme->getName(), fit.second.getName());
+					trigger.rootField = &fit.second;
+					trigger.rootScheme = scheme;
+					trigger.onRemove = ref->onRemove;
+					if (ref->onRemove == RemovePolicy::StrongReference) {
+						trigger.onRemove = RemovePolicy::Reference; // make trigger to remove just reference
+					}
+
+					auto triggerName = trigger.makeName();
+					targetIt->second.triggers.emplace(std::move(triggerName), std::move(trigger));
+
+					if (ref->onRemove == RemovePolicy::StrongReference) {
+						// make reverse-trigger to remove object with strong reference
+						do {
+							TriggerRec trigger(TriggerRec::Delete, TriggerRec::Before, scheme->getName(), fit.second.getName(),
+									ref->scheme->getName(), "__oid");
+							trigger.rootField = &fit.second;
+							trigger.rootScheme = scheme;
+							trigger.onRemove = ref->onRemove;
+
+							auto triggerName = trigger.makeName();
+							schemeTable->triggers.emplace(std::move(triggerName), std::move(trigger));
+						} while (0);
+
+						do {
+							TriggerRec trigger(TriggerRec::Update, TriggerRec::Before, scheme->getName(), fit.second.getName(),
+									ref->scheme->getName(), "__oid");
+							trigger.rootField = &fit.second;
+							trigger.rootScheme = scheme;
+							trigger.onRemove = ref->onRemove;
+
+							auto triggerName = trigger.makeName();
+							schemeTable->triggers.emplace(std::move(triggerName), std::move(trigger));
+						} while (0);
+					}
 				}
 			} else if (type == db::Type::Array) {
 				auto slot = static_cast<const db::FieldArray *>(f.getSlot());
@@ -346,9 +695,10 @@ mem::Map<mem::StringView, TableRec> TableRec::parse(const db::Interface::Config 
 					mem::String name = mem::toString(it.first, "_f_", fit.first);
 					auto & source = it.first;
 
+					auto sourceFieldName = mem::toString(source, "_id");
+
 					TableRec table;
-					table.cols.emplace("id", ColRec(ColRec::Type::Int8, ColRec::IsNotNull | ColRec::PrimaryKey));
-					table.cols.emplace(mem::toString(source, "_id"), ColRec(ColRec::Type::Int8));
+					table.cols.emplace(sourceFieldName, ColRec(ColRec::Type::Int8));
 
 					auto type = slot->tfield.getType();
 					switch (type) {
@@ -365,15 +715,18 @@ mem::Map<mem::StringView, TableRec> TableRec::parse(const db::Interface::Config 
 						break;
 					}
 
-					/*table.constraints.emplace(name + "_ref_" + source, ConstraintRec (
-							ConstraintRec::Reference, mem::toString(source, "_id"), source, db::RemovePolicy::Cascade));
-
-					if (f.hasFlag(db::Flags::Unique)) {
-						table.constraints.emplace(name + "_unique", ConstraintRec(ConstraintRec::Unique, {mem::toString(source, "_id"), "data"}));
-					}*/
-
 					table.indexes.emplace(mem::toString(name, "_idx_", source), mem::toString(source, "_id"));
+					if (f.hasFlag(db::Flags::Unique)) {
+						table.indexes.emplace(mem::toString(name, "_uidx_data"), IndexRec(mem::toString("data"), true));
+					}
+
 					tables.emplace(mem::StringView(name).pdup(), std::move(table));
+
+					TriggerRec trigger(TriggerRec::Delete, TriggerRec::Before, scheme->getName(), f.getName(), name, sourceFieldName);
+					trigger.rootField = &f;
+					auto triggerName = trigger.makeName();
+
+					schemeTable->triggers.emplace(std::move(triggerName), std::move(trigger));
 				}
 			} else if (type == db::Type::View) {
 				auto slot = static_cast<const db::FieldView *>(f.getSlot());
@@ -385,14 +738,28 @@ mem::Map<mem::StringView, TableRec> TableRec::parse(const db::Interface::Config 
 				TableRec table;
 				table.viewScheme = it.second;
 				table.viewField = slot;
-				table.cols.emplace("__vid", ColRec(ColRec::Type::Int8, ColRec::IsNotNull | ColRec::PrimaryKey));
 				table.cols.emplace(mem::toString(source, "_id"), ColRec(ColRec::Type::Int8, ColRec::IsNotNull));
 				table.cols.emplace(mem::toString(target, "_id"), ColRec(ColRec::Type::Int8, ColRec::IsNotNull));
 
-				/*table.constraints.emplace(name + "_ref_" + source, ConstraintRec(
-						ConstraintRec::Reference, mem::toString(source, "_id"), source, db::RemovePolicy::Cascade));
-				table.constraints.emplace(name + "_ref_" + slot->getName(), ConstraintRec(
-						ConstraintRec::Reference, mem::toString(target, "_id"), target.str<mem::Interface>(), db::RemovePolicy::Cascade));*/
+				do {
+					TriggerRec trigger(TriggerRec::Delete, TriggerRec::Before, source, "__oid",
+							name, mem::toString(source, "_id"));
+					trigger.rootField = &fit.second;
+					auto triggerName = trigger.makeName();
+					schemeTable->triggers.emplace(std::move(triggerName), std::move(trigger));
+				} while (0);
+
+				do {
+					auto targetIt = tables.find(target);
+					if (targetIt != tables.end()) {
+						TriggerRec trigger(TriggerRec::Delete, TriggerRec::After, target, "__oid",
+								name, mem::toString(target, "_id"));
+						trigger.rootField = &fit.second;
+						trigger.rootScheme = scheme;
+						auto triggerName = trigger.makeName();
+						targetIt->second.triggers.emplace(std::move(triggerName), std::move(trigger));
+					}
+				} while (0);
 
 				table.indexes.emplace(mem::toString(name, "_idx_", source), mem::toString(source, "_id"));
 				table.indexes.emplace(mem::toString(name, "_idx_", target), mem::toString(target, "_id"));
@@ -400,24 +767,37 @@ mem::Map<mem::StringView, TableRec> TableRec::parse(const db::Interface::Config 
 				auto tblIt = tables.emplace(mem::StringView(name).pdup(), std::move(table)).first;
 
 				if (slot->delta) {
-					mem::StringStream hashStream;
-					hashStream << getDefaultFunctionVersion() << tblIt->first << "_delta";
-
-					size_t id = std::hash<mem::String>{}(hashStream.weak());
-					hashStream.clear();
-					hashStream << "_trig_" << tblIt->first << "_" << id;
-					tblIt->second.triggers.emplace(mem::StringView(hashStream.weak()).sub(0, 56).str<mem::Interface>());
-
-					mem::String name = mem::toString(it.first, "_f_", fit.first, "_delta");
-					table.cols.emplace("id", ColRec(ColRec::Type::Int8, ColRec::IsNotNull | ColRec::PrimaryKey));
+					mem::String deltaName = mem::toString(it.first, "_f_", fit.first, "_delta");
 					table.cols.emplace("tag", ColRec(ColRec::Type::Int8, ColRec::IsNotNull));
 					table.cols.emplace("object", ColRec(ColRec::Type::Int8, ColRec::IsNotNull));
 					table.cols.emplace("time", ColRec(ColRec::Type::Int8, ColRec::IsNotNull));
 					table.cols.emplace("user", ColRec(ColRec::Type::Int8));
 
-					table.indexes.emplace(name + "_idx_tag", "tag");
-					table.indexes.emplace(name + "_idx_object", "object");
-					table.indexes.emplace(name + "_idx_time", "time");
+					table.indexes.emplace(deltaName + "_idx_tag", "tag");
+					table.indexes.emplace(deltaName + "_idx_object", "object");
+					table.indexes.emplace(deltaName + "_idx_time", "time");
+
+					do {
+						TriggerRec trigger(TriggerRec::Insert, TriggerRec::After, name, "__delta", deltaName, mem::toString(target, "_id"));
+						trigger.tagField = mem::toString(source, "_id");
+						auto triggerName = trigger.makeName();
+						tblIt->second.triggers.emplace(std::move(triggerName), std::move(trigger));
+					} while (0);
+
+					do {
+						TriggerRec trigger(TriggerRec::Update, TriggerRec::After, name, "__delta", deltaName, mem::toString(target, "_id"));
+						trigger.tagField = mem::toString(source, "_id");
+						auto triggerName = trigger.makeName();
+						tblIt->second.triggers.emplace(std::move(triggerName), std::move(trigger));
+					} while (0);
+
+					do {
+						TriggerRec trigger(TriggerRec::Delete, TriggerRec::After, name, "__delta", deltaName, mem::toString(target, "_id"));
+						trigger.tagField = mem::toString(source, "_id");
+						auto triggerName = trigger.makeName();
+						tblIt->second.triggers.emplace(std::move(triggerName), std::move(trigger));
+					} while (0);
+
 					tables.emplace(mem::StringView(name).pdup(), std::move(table));
 				}
 			}
@@ -425,7 +805,6 @@ mem::Map<mem::StringView, TableRec> TableRec::parse(const db::Interface::Config 
 			if (scheme->hasDelta()) {
 				auto name = Handle::getNameForDelta(*scheme);
 				TableRec table;
-				table.cols.emplace("id", ColRec(ColRec::Type::Int8, ColRec::IsNotNull | ColRec::PrimaryKey));
 				table.cols.emplace("object", ColRec(ColRec::Type::Int8, ColRec::IsNotNull));
 				table.cols.emplace("time", ColRec(ColRec::Type::Int8, ColRec::IsNotNull));
 				table.cols.emplace("action", ColRec(ColRec::Type::Int8, ColRec::IsNotNull));
@@ -517,59 +896,24 @@ mem::Map<mem::StringView, TableRec> TableRec::get(Handle &h, mem::StringStream &
 		}
 	});
 
-	/*
-	h.performSimpleSelect("SELECT table_name, constraint_name, constraint_type FROM information_schema.table_constraints "
-			"WHERE table_schema='public' AND constraint_schema='public';"_weak,
-			[&] (db::sql::Result &constraints) {
-		for (auto it : constraints) {
-			auto tname = it.at(0).str<mem::Interface>();
-			auto f = ret.find(tname);
-			if (f != ret.end()) {
-				auto &table = f->second;
-				if (it.at(2) == "UNIQUE") {
-					table.constraints.emplace(it.at(1).str<mem::Interface>(), ConstraintRec(ConstraintRec::Unique));
-					stream << "CONSTRAINT " << it.at(0) << " " << it.at(1) << " " << it.at(2) << "\n";
-				} else if (it.at(2) == "FOREIGN KEY") {
-					table.constraints.emplace(it.at(1).str<mem::Interface>(), ConstraintRec(ConstraintRec::Reference));
-					stream << "CONSTRAINT " << it.at(0) << " " << it.at(1) << " " << it.at(2) << "\n";
-				}
-			}
-		}
-		constraints.clear();
-	});
-
-	h.performSimpleSelect(mem::String::make_weak(INDEX_QUERY),
-			[&] (db::sql::Result &indexes) {
-		for (auto it : indexes) {
-			auto tname = it.at(0).str<mem::Interface>();
-			auto f = ret.find(tname);
-			if (f != ret.end()) {
-				auto &table = f->second;
-				auto name = it.at(1);
-				name.readUntilString("_idx_");
-				if (name.is("_idx_")) {
-					table.indexes.emplace(it.at(1).str<mem::Interface>(), it.at(2).str<mem::Interface>());
-					stream << "INDEX " << it.at(0) << " " << it.at(1) << " " << it.at(2) << "\n";
-				}
-			}
-		}
-		indexes.clear();
-	});
-
-	h.performSimpleSelect("SELECT event_object_table, trigger_name FROM information_schema.triggers "
-			"WHERE trigger_schema='public';"_weak,
+	h.performSimpleSelect("SELECT tbl_name, name, sql FROM sqlite_schema WHERE type='trigger';",
 			[&] (db::sql::Result &triggers) {
 		for (auto it : triggers) {
-			auto tname = it.at(0).str<mem::Interface>();
-			auto f = ret.find(tname);
+			auto tableName = it.at(0);
+			auto f = ret.find(tableName);
 			if (f != ret.end()) {
-				auto &table = f->second;
-				table.triggers.emplace(it.at(1).str<mem::Interface>());
-				stream << "TRIGGER " << it.at(0) << " " << it.at(1) << "\n";
+				auto triggerName = it.at(1);
+				if (!triggerName.starts_with("ST_TRIGGER:")) {
+					continue;
+				}
+
+				triggerName += "ST_TRIGGER:"_len;
+
+				TriggerRec trigger(triggerName);
+				f->second.triggers.emplace(it.at(1).str<mem::Interface>(), std::move(trigger));
 			}
 		}
-		triggers.clear();
-	});*/
+	});
 
 	return ret;
 }
@@ -580,27 +924,13 @@ TableRec::TableRec(const db::Interface::Config &cfg, const db::Scheme *scheme) {
 	if (scheme->isDetouched()) {
 		detached = true;
 	}
-	mem::StringStream hashStreamAfter; hashStreamAfter << getDefaultFunctionVersion();
-	mem::StringStream hashStreamBefore; hashStreamBefore << getDefaultFunctionVersion();
 
-	bool hasAfterTrigger = false;
-	bool hasBeforeTrigger = false;
 	auto name = scheme->getName();
-
-	if (scheme->hasDelta()) {
-		hasAfterTrigger = true;
-		hashStreamAfter << ":delta:";
-	}
 
 	for (auto &it : scheme->getFields()) {
 		bool emplaced = false;
 		auto &f = it.second;
 		auto type = it.second.getType();
-
-		if (type == db::Type::File || type == db::Type::Image) {
-			hasAfterTrigger = true;
-			hashStreamAfter << it.first << stappler::toInt(type);
-		}
 
 		ColRec::Flags flags = ColRec::None;
 		if (f.hasFlag(db::Flags::Required)) {
@@ -650,23 +980,14 @@ TableRec::TableRec(const db::Interface::Config &cfg, const db::Scheme *scheme) {
 
 		case db::Type::Object:
 			cols.emplace(it.first, ColRec(ColRec::Type::Int8, flags));
-			if (f.isReference()) {
-				auto objSlot = static_cast<const db::FieldObject *>(f.getSlot());
-				if (objSlot->onRemove == db::RemovePolicy::StrongReference) {
-					hasAfterTrigger = true;
-					hashStreamAfter << it.first << stappler::toInt(type);
-				}
-			}
 			emplaced = true;
 			break;
 
 		case db::Type::Set:
 			if (f.isReference()) {
-				auto objSlot = static_cast<const db::FieldObject *>(f.getSlot());
-				if (objSlot->onRemove == db::RemovePolicy::StrongReference) {
-					hasBeforeTrigger = true;
-					hashStreamBefore << it.first << stappler::toInt(type);
-				}
+				// set is filled with references
+			} else {
+				//
 			}
 			break;
 
@@ -707,21 +1028,19 @@ TableRec::TableRec(const db::Interface::Config &cfg, const db::Scheme *scheme) {
 
 				indexes.emplace(mem::toString(name, (unique ? "_uidx_" : "_idx_"), it.first), IndexRec(it.first, unique));
 			} else if (type == db::Type::File || type == db::Type::Image) {
-				// auto ref = cfg.fileScheme;
-				// auto cname = mem::toString(name, "_ref_", it.first);
-				// auto target = ref->getName();
-				// constraints.emplace(cname, ConstraintRec(ConstraintRec::Reference, it.first, target.str<mem::Interface>(), db::RemovePolicy::Null));
+				TriggerRec updateTrigger(TriggerRec::Update, TriggerRec::After, name, it.second.getName(),
+						cfg.fileScheme->getName(), "__oid", &it.second);
+				auto updateTriggerName = updateTrigger.makeName();
+				triggers.emplace(std::move(updateTriggerName), std::move(updateTrigger));
+
+				TriggerRec removeTrigger(TriggerRec::Delete, TriggerRec::After, name, it.second.getName(),
+						cfg.fileScheme->getName(), "__oid", &it.second);
+				auto removeTriggerName = removeTrigger.makeName();
+				triggers.emplace(std::move(removeTriggerName), std::move(removeTrigger));
 			}
 
 			if ((type == db::Type::Text && f.getTransform() == db::Transform::Alias) || (f.hasFlag(db::Flags::Indexed))) {
-				/*if (type == db::Type::Custom) {
-					auto c = f.getSlot<db::FieldCustom>();
-					indexes.emplace(mem::toString(name, "_idx_", c->getIndexName()), c->getIndexField());
-				} else if (type == db::Type::FullTextView) {
-					indexes.emplace(mem::toString(name, "_idx_", it.first), mem::toString("USING GIN ( \"", it.first, "\" )"));
-				} else {*/
-					indexes.emplace(mem::toString(name, (unique ? "_uidx_" : "_idx_"), it.first), IndexRec(it.first, unique));
-				//}
+				indexes.emplace(mem::toString(name, (unique ? "_uidx_" : "_idx_"), it.first), IndexRec(it.first, unique));
 			}
 
 			/*if (type == db::Type::Text) {
@@ -746,20 +1065,30 @@ TableRec::TableRec(const db::Interface::Config &cfg, const db::Scheme *scheme) {
 		indexes.emplace(nameStream.str(), IndexRec(std::move(values), true));
 	}
 
-	if (hasAfterTrigger) {
-		size_t id = std::hash<mem::String>{}(hashStreamAfter.weak());
+	if (scheme->hasDelta()) {
+		do {
+			TriggerRec trigger(TriggerRec::Insert, TriggerRec::After, name, "__delta",
+									Handle::getNameForDelta(*scheme), "object");
+			trigger.rootScheme = scheme;
+			auto triggerName = trigger.makeName();
+			triggers.emplace(std::move(triggerName), std::move(trigger));
+		} while (0);
 
-		hashStreamAfter.clear();
-		hashStreamAfter << "_tr_a_" << scheme->getName() << "_" << id;
-		triggers.emplace(mem::StringView(hashStreamAfter.weak()).sub(0, 56).str<mem::Interface>());
-	}
+		do {
+			TriggerRec trigger(TriggerRec::Update, TriggerRec::After, name, "__delta",
+									Handle::getNameForDelta(*scheme), "object");
+			trigger.rootScheme = scheme;
+			auto triggerName = trigger.makeName();
+			triggers.emplace(std::move(triggerName), std::move(trigger));
+		} while (0);
 
-	if (hasBeforeTrigger) {
-		size_t id = std::hash<mem::String>{}(hashStreamBefore.weak());
-
-		hashStreamBefore.clear();
-		hashStreamBefore << "_tr_b_" << scheme->getName() << "_" << id;
-		triggers.emplace(mem::StringView(hashStreamBefore.weak()).sub(0, 56).str<mem::Interface>());
+		do {
+			TriggerRec trigger(TriggerRec::Delete, TriggerRec::After, name, "__delta",
+									Handle::getNameForDelta(*scheme), "object");
+			trigger.rootScheme = scheme;
+			auto triggerName = trigger.makeName();
+			triggers.emplace(std::move(triggerName), std::move(trigger));
+		} while (0);
 	}
 
 	if (withOids && !detached) {

@@ -296,7 +296,7 @@ bool SqlHandle::insertIntoSet(SqlQuery &query, const Scheme &s, int64_t id, cons
 	return false;
 }
 
-bool SqlHandle::insertIntoArray(SqlQuery &query, const Scheme &scheme, int64_t id, const Field &field, const mem::Value &d) {
+bool SqlHandle::insertIntoArray(SqlQuery &query, const Scheme &scheme, int64_t id, const Field &field, mem::Value &d) {
 	if (d.isNull()) {
 		query.remove(mem::toString(scheme.getName(), "_f_", field.getName()))
 				.where(mem::toString(scheme.getName(), "_id"), Comparation::Equal, id).finalize();
@@ -310,7 +310,11 @@ bool SqlHandle::insertIntoArray(SqlQuery &query, const Scheme &scheme, int64_t i
 				for (auto &it : d.asArray()) {
 					vals.values(id, db::Binder::DataField {&arrf, it, arrf.isDataLayout(), arrf.hasFlag(db::Flags::Compressed)});
 				}
-				vals.onConflictDoNothing().finalize();
+				if (field.hasFlag(Flags::Unique)) {
+					vals.finalize();
+				} else {
+					vals.onConflictDoNothing().finalize();
+				}
 				return performQuery(query) != stappler::maxOf<size_t>();
 			}
 		}

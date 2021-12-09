@@ -110,7 +110,7 @@ TestHandler::TestHandler(Server &serv, const String &name, const data::Value &di
 	_refs.define({
 		Field::Text("alias", storage::Transform::Alias),
 		Field::Text("text", storage::MinLength(3)),
-		Field::Set("features", _objects, RemovePolicy::StrongReference),
+		Field::Set("features", _objects, RemovePolicy::StrongReference), // objects, that will be removed when ref is removed
 		Field::Set("optionals", _objects, RemovePolicy::Reference),
 		Field::Integer("mtime", storage::Flags::AutoMTime | storage::Flags::Indexed),
 		Field::Integer("index", storage::Flags::Indexed),
@@ -131,7 +131,7 @@ TestHandler::TestHandler(Server &serv, const String &name, const data::Value &di
 
 	_subobjects.define({
 		Field::Text("text", storage::MinLength(3)),
-		Field::Object("object", _objects),
+		Field::Object("object", _objects, RemovePolicy::Cascade),
 		Field::Integer("mtime", storage::Flags::AutoMTime | storage::Flags::Indexed),
 		Field::Integer("index", storage::Flags::Indexed),
 	});
@@ -162,7 +162,9 @@ TestHandler::TestHandler(Server &serv, const String &name, const data::Value &di
 		Field::Integer("time", storage::Flags::Indexed),
 		Field::Text("text", storage::MinLength(3)),
 		Field::Array("textArray", Type::Text),
-		Field::Array("integerArray", Type::Integer),
+		Field::Array("integerArray", Type::Integer, Flags::Unique),
+		Field::Object("object", _objects, Flags::Reference),
+		Field::Object("strong", _objects, RemovePolicy::StrongReference),
 	});
 }
 

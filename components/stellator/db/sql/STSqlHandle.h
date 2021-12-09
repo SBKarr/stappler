@@ -133,7 +133,7 @@ protected:
 	size_t getSimpleCount(Worker &w, SqlQuery &query, uint64_t oid, const Field &f);
 
 	bool insertIntoSet(SqlQuery &, const Scheme &s, int64_t id, const db::FieldObject &field, const Field &f, const mem::Value &d);
-	bool insertIntoArray(SqlQuery &, const Scheme &s, int64_t id, const Field &field, const mem::Value &d);
+	bool insertIntoArray(SqlQuery &, const Scheme &s, int64_t id, const Field &field, mem::Value &d);
 	bool insertIntoRefSet(SqlQuery &, const Scheme &s, int64_t id, const Field &field, const mem::Vector<int64_t> &d);
 	bool cleanupRefSet(SqlQuery &query, const Scheme &, uint64_t oid, const Field &, const mem::Vector<int64_t> &objsToRemove);
 

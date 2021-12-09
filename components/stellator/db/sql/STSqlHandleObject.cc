@@ -578,7 +578,10 @@ void SqlHandle::performPostUpdate(const db::Transaction &t, SqlQuery &query, con
 					Worker(s, t).clearField(id, f_it->second);
 				}
 				query.clear();
-				insertIntoArray(query, s, id, f_it->second, it.second);
+				auto tmp = it.second;
+				if (insertIntoArray(query, s, id, f_it->second, tmp)) {
+					data.setValue(tmp, f_it->second.getName());
+				}
 			}
 		}
 	}

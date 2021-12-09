@@ -79,6 +79,11 @@ db::User * SqlHandle::authorizeUser(const db::Auth &auth, const mem::StringView 
 
 	auto minTime = stappler::Time::now() - config::getMaxAuthTime();
 
+	bool transactionStarted = false;
+	if (transactionStatus == TransactionStatus::None) {
+		transactionStarted = beginTransaction();
+	}
+
 	db::User *ret = nullptr;
 	makeQuery([&] (SqlQuery &query) {
 		query.with("u", [&] (SqlQuery::GenericQuery &q) {
@@ -163,6 +168,11 @@ db::User * SqlHandle::authorizeUser(const db::Auth &auth, const mem::StringView 
 			}
 		});
 	});
+
+	if (transactionStarted) {
+		endTransaction();
+	}
+
 	return ret;
 }
 
@@ -196,18 +206,17 @@ void SqlHandle::makeSessionsCleanup() {
 		performSimpleSelect(query.weak(), [&] (Result &res) {
 			if (!res.empty()) {
 				query.clear();
-				query << "DELETE FROM __files WHERE ";
+				query << "DELETE FROM __files WHERE __oid IN (";
 				first = true;
 				// check for files to remove
 				for (auto it : res) {
-					it.front().readInteger().unwrap([&] (int64_t fileId) {
+					if (auto fileId = it.toInteger(0)) {
 						db::File::removeFile(fileId);
-
-						if (first) { first = false; } else { query << " OR "; }
-						query << " __oid=" << fileId;
-					});
+						if (first) { first = false; } else { query << ","; }
+						query << fileId;
+					}
 				}
-				query << ";";
+				query << ");";
 				performSimpleQuery(query.weak());
 			}
 		});

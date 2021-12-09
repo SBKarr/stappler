@@ -66,6 +66,10 @@ data::Value ResourceObject::performUpdate(const Vector<int64_t> &objs, data::Val
 	data::Value ret;
 	encodeFiles(data, files);
 
+	for (auto &it : data.asDict()) {
+		addExtraResolveField(it.first);
+	}
+
 	for (auto &it : objs) {
 		_transaction.perform([&] {
 			ret.addValue(Worker(getScheme(), _transaction).update(it, data));
@@ -178,6 +182,10 @@ data::Value ResourceReslist::performCreateObject(data::Value &data, apr::array<d
 		}
 
 		encodeFiles(data, files);
+
+		for (auto &it : data.asDict()) {
+			addExtraResolveField(it.first);
+		}
 
 		data::Value ret = Worker(getScheme(), _transaction).create(data);
 		if (processResultObject(_queries, ret)) {

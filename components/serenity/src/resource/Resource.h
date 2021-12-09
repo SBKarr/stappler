@@ -113,6 +113,7 @@ protected:
 protected:
 	virtual const Scheme &getRequestScheme() const;
 	void resolveOptionForString(const String &str);
+	void addExtraResolveField(StringView);
 
 	Time _delta;
 	ResourceType _type = ResourceType::Object;
@@ -124,6 +125,8 @@ protected:
 	User *_user = nullptr;
 	Set<int64_t> _resolveObjects;
 	data::Value _filterData;
+
+	bool _isResolvesUpdated = true;
 	Vector<String> _extraResolves;
 	ResolveOptions _resolve = ResolveOptions::None;
 };

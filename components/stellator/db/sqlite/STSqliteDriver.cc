@@ -34,6 +34,7 @@ struct DriverHandle {
 	mem::pool_t *pool;
 	mem::StringView name;
 	sqlite3_stmt *oidQuery = nullptr;
+	int64_t userId = 0;
 };
 
 Driver *Driver::open(mem::StringView path) {
@@ -121,6 +122,15 @@ static void stellator_next_oid_xFunc(sqlite3_context *ctx, int nargs, sqlite3_va
 	}
 	sqlite3_reset(data->oidQuery);
 	sqlite3_result_int64(ctx, ret);
+}
+
+static void stellator_now_xFunc(sqlite3_context *ctx, int nargs, sqlite3_value **args) {
+	sqlite3_result_int64(ctx, mem::Time::now().toMicros());
+}
+
+static void stellator_user_xFunc(sqlite3_context *ctx, int nargs, sqlite3_value **args) {
+	DriverHandle *data = (DriverHandle *)sqlite3_user_data(ctx);
+	sqlite3_result_int64(ctx, data->userId);
 }
 
 Driver::Handle Driver::connect(const mem::Map<mem::StringView, mem::StringView> &params) const {
@@ -226,6 +236,10 @@ Driver::Handle Driver::connect(const mem::Map<mem::StringView, mem::StringView> 
 
 			sqlite3_create_function_v2(db, "stellator_next_oid", 0, SQLITE_UTF8, (void *)h,
 					stellator_next_oid_xFunc, nullptr, nullptr, nullptr);
+			sqlite3_create_function_v2(db, "stellator_now", 0, SQLITE_UTF8, (void *)h,
+					stellator_now_xFunc, nullptr, nullptr, nullptr);
+			sqlite3_create_function_v2(db, "stellator_user", 0, SQLITE_UTF8, (void *)h,
+					stellator_user_xFunc, nullptr, nullptr, nullptr);
 
 			mem::pool::cleanup_register(p, [query = h->oidQuery, ret = h->conn] {
 				if (query) {
@@ -280,6 +294,11 @@ mem::Value Driver::getInfo(Connection conn, int err) const {
 		stappler::pair("status", mem::Value(sqlite3_errstr(int(err)))),
 		stappler::pair("desc", mem::Value(sqlite3_errmsg((sqlite3 *)conn.get()))),
 	});
+}
+
+void Driver::setUserId(Handle h, int64_t userId) const {
+	auto db = (DriverHandle *)h.get();
+	db->userId = userId;
 }
 
 Driver::Driver(mem::StringView mem) { }

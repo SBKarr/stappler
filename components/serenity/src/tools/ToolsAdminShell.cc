@@ -433,9 +433,10 @@ struct CreateCmd : ResourceCmd {
 			if (auto r = acquireResource(t, h, schemeName, path, StringView())) {
 				apr::array<db::InputFile> f;
 				if (r->prepareCreate()) {
-					auto ret = r->createObject(patch, f);
-					h.sendData(ret);
-					success = true;
+					if (auto ret = r->createObject(patch, f)) {
+						h.sendData(ret);
+						success = true;
+					}
 				} else {
 					h.sendError(toString("Action for scheme ", schemeName, " is forbidden for ", h.getUser()->getName()));
 				}
@@ -478,9 +479,10 @@ struct UpdateCmd : ResourceCmd {
 			if (auto r = acquireResource(t, h, schemeName, path, StringView())) {
 				apr::array<db::InputFile> f;
 				if (r->prepareUpdate()) {
-					auto ret = r->updateObject(patch, f);
-					h.sendData(ret);
-					success = true;
+					if (auto ret = r->updateObject(patch, f)) {
+						h.sendData(ret);
+						success = true;
+					}
 				} else {
 					h.sendError(toString("Action for scheme ", schemeName, " is forbidden for ", h.getUser()->getName()));
 				}
@@ -517,6 +519,7 @@ struct UploadCmd : ResourceCmd {
 			r.skipChars<StringView::CharGroup<CharGroupId::WhiteSpace>>();
 		}
 
+		bool success = false;
 		h.performWithStorage([&] (const db::Transaction &t) {
 			if (auto r = acquireResource(t, h, schemeName, path, StringView())) {
 				if (r->prepareCreate()) {
@@ -542,12 +545,15 @@ struct UploadCmd : ResourceCmd {
 							"\"></p>";
 
 					h.send(str.str());
+					success = true;
 				}
 				delete r;
 			}
 		});
 
-		h.sendError("Fail to prepare upload");
+		if (!success) {
+			h.sendError("Fail to prepare upload");
+		}
 		return true;
 	}
 
@@ -572,12 +578,15 @@ struct AppendCmd : ResourceCmd {
 			r.skipChars<StringView::CharGroup<CharGroupId::WhiteSpace>>();
 		}
 
+		bool success = false;
 		data::Value patch = (r.is('{') || r.is('[') || r.is('(')) ? data::read(r) : UrlView::parseArgs(r, 1_KiB);
 		h.performWithStorage([&] (const db::Transaction &t) {
 			if (auto r = acquireResource(t, h, schemeName, path, StringView())) {
 				if (r->prepareAppend()) {
-					auto ret = r->appendObject(patch);
-					h.sendData(ret);
+					if (auto ret = r->appendObject(patch)) {
+						h.sendData(ret);
+						success = true;
+					}
 				} else {
 					h.sendError(toString("Action for scheme ", schemeName, " is forbidden for ", h.getUser()->getName()));
 				}
@@ -585,8 +594,10 @@ struct AppendCmd : ResourceCmd {
 			}
 		});
 
-		h.sendData(patch);
-		h.sendError("Fail to update object with data:");
+		if (!success) {
+			h.sendData(patch);
+			h.sendError("Fail to update object with data:");
+		}
 
 		return true;
 	}
@@ -612,9 +623,11 @@ struct DeleteCmd : ResourceCmd {
 			r.skipChars<StringView::CharGroup<CharGroupId::WhiteSpace>>();
 		}
 
+		bool success = false;
 		h.performWithStorage([&] (const db::Transaction &t) {
 			if (auto r = acquireResource(t, h, schemeName, path, StringView())) {
 				if (r->removeObject()) {
+					success = true;
 					h.sendData(data::Value(true));
 				} else {
 					h.sendError(toString("Action for scheme ", schemeName, " is forbidden for ", h.getUser()->getName()));
@@ -623,7 +636,9 @@ struct DeleteCmd : ResourceCmd {
 			}
 		});
 
-		h.sendError("Fail to delete object");
+		if (!success) {
+			h.sendError("Fail to delete object");
+		}
 
 		return true;
 	}
