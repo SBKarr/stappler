@@ -43,7 +43,7 @@ struct ConstraintRec {
 	ConstraintRec(Type t) : type(t) { }
 	ConstraintRec(Type t, std::initializer_list<mem::String> il) : type(t), fields(il) { }
 	ConstraintRec(Type t, const mem::String &col, mem::StringView ref = mem::StringView(), db::RemovePolicy r = db::RemovePolicy::Null)
-	: type(t), fields{col}, reference(ref.str()), remove(r) { }
+	: type(t), fields{col}, reference(ref.str<mem::Interface>()), remove(r) { }
 };
 
 struct ColRec {
@@ -550,7 +550,7 @@ mem::Map<mem::StringView, TableRec> TableRec::parse(const db::Interface::Config 
 			if (type == db::Type::Set) {
 				auto ref = static_cast<const db::FieldObject *>(f.getSlot());
 				if (ref->onRemove == db::RemovePolicy::Reference || ref->onRemove == db::RemovePolicy::StrongReference) {
-					mem::String name = toString(it.first, "_f_", fit.first);
+					mem::String name = mem::toString(it.first, "_f_", fit.first);
 					auto & source = it.first;
 					auto target = ref->scheme->getName();
 					TableRec table;
@@ -937,9 +937,9 @@ TableRec::TableRec(const db::Interface::Config &cfg, const db::Scheme *scheme,
 	}
 
 	for (auto &it : scheme->getUnique()) {
-		auto &c = constraints.emplace(it.name.str(), ConstraintRec(ConstraintRec::Unique)).first->second;
+		auto &c = constraints.emplace(it.name.str<mem::Interface>(), ConstraintRec(ConstraintRec::Unique)).first->second;
 		for (auto &f : it.fields) {
-			c.fields.emplace_back(f->getName().str());
+			c.fields.emplace_back(f->getName().str<mem::Interface>());
 		}
 	}
 

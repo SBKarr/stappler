@@ -130,8 +130,8 @@ static inline auto SqlQuery_makeWhereClause(SqlQuery::Context &ctx, Clause &tmp,
 			}
 		} else {
 			auto softLimitFieldStr = (ctx.softLimitIsFts
-				? toString("__ts_rank_", ctx.softLimitField)
-				: ctx.softLimitField.str());
+				? mem::toString("__ts_rank_", ctx.softLimitField)
+				: ctx.softLimitField.str<mem::Interface>());
 
 			// write soft limit query like WHERE __oid IN (SELECT __oid FROM u) OR (field = (SELECT MAX(mtime) FROM u))
 			tmp.where(SqlQuery::Field(ctx.scheme->getName(), "__oid"), Comparation::In, mem::Callback<void(SqlQuery::Select &)>([&] (SqlQuery::Select &subQ) {

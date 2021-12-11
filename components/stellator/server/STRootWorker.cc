@@ -884,6 +884,10 @@ bool Root::runFollowedTask(const Server &serv, Task *task) {
 	return false;
 }
 
+void Root::onBroadcast(const mem::Value &val) {
+	onLocalBroadcast(val);
+}
+
 size_t Root::getThreadCount() const {
 	if (_internal && _internal->queue) {
 		return _internal->queue->getWorkersCount();
@@ -893,14 +897,6 @@ size_t Root::getThreadCount() const {
 
 mem::pool_t * Root::pool() const {
 	return _pool;
-}
-
-bool Root::isDebugEnabled() const {
-	return _debug;
-}
-
-void Root::setDebugEnabled(bool d) {
-	_debug = d;
 }
 
 Server Root::getRootServer() const {

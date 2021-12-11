@@ -20,20 +20,21 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 **/
 
-#include "ContinueToken.h"
+#include "STContinueToken.h"
+#include "STStorageScheme.h"
 
 NS_DB_BEGIN
 
 ContinueToken::ContinueToken(const mem::StringView &field, size_t count, bool reverse)
-: field(field.str()), count(count), flags(Initial) {
+: field(field.str<mem::Interface>()), count(count), flags(Initial) {
 	if (reverse) {
 		flags |= Reverse | Inverted;
 	}
 }
 
 ContinueToken::ContinueToken(const mem::StringView &str) {
-	auto bytes = stappler::base64::decode(str);
-	auto d = stappler::data::read(bytes);
+	auto bytes = stappler::base64::decode<mem::Interface>(str);
+	auto d = stappler::data::read<typeof(bytes), mem::Interface>(bytes);
 	if (d.isArray() && d.size() == 6) {
 		field = d.getString(0);
 		initVec = d.getValue(1);
@@ -56,7 +57,7 @@ bool ContinueToken::isInit() const {
 }
 
 mem::String ContinueToken::encode() const {
-	return stappler::base64url::encode(stappler::data::write(mem::Value({
+	return stappler::base64url::encode<mem::Interface>(stappler::data::write<mem::Interface>(mem::Value({
 		mem::Value(field),
 		mem::Value(initVec),
 		mem::Value(count),
@@ -126,7 +127,7 @@ bool ContinueToken::hasNextImpl() const {
 mem::String ContinueToken::encodeNextImpl() const {
 	Flags f = Flags::None;
 	if (hasFlag(Flags::Inverted)) { f |= Flags::Inverted; }
-	return stappler::base64url::encode(stappler::data::write(mem::Value({
+	return stappler::base64url::encode<mem::Interface>(stappler::data::write<mem::Interface>(mem::Value({
 		mem::Value(field),
 		mem::Value(lastVec),
 		mem::Value(count),
@@ -139,7 +140,7 @@ mem::String ContinueToken::encodeNextImpl() const {
 mem::String ContinueToken::encodePrevImpl() const {
 	Flags f = Flags::Reverse;
 	if (hasFlag(Flags::Inverted)) { f |= Flags::Inverted; }
-	return stappler::base64url::encode(stappler::data::write(mem::Value({
+	return stappler::base64url::encode<mem::Interface>(stappler::data::write<mem::Interface>(mem::Value({
 		mem::Value(field),
 		mem::Value(firstVec),
 		mem::Value(count),

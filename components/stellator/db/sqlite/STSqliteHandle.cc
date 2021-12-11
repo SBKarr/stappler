@@ -121,7 +121,7 @@ public:
 		}
 	}
 	virtual void bindStringView(db::Binder &, mem::StringStream &query, const mem::StringView &val) override {
-		if (auto num = push(val.str())) {
+		if (auto num = push(val)) {
 			query << "?" << num;
 		}
 	}

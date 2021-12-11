@@ -281,7 +281,7 @@ void SqlHandle::broadcast(const mem::Bytes &bytes) {
 		});
 		if (isNotificationsSupported()) {
 			makeQuery([&] (SqlQuery &query) {
-				query.getStream() << "NOTIFY " << config::getSerenityBroadcastChannelName() << ";";
+				query.getStream() << "NOTIFY " << config::getStorageBroadcastChannelName() << ";";
 				performQuery(query);
 			});
 		}

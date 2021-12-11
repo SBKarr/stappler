@@ -601,7 +601,7 @@ mem::Map<mem::StringView, TableRec> TableRec::parse(const db::Interface::Config 
 				auto ref = static_cast<const db::FieldObject *>(f.getSlot());
 				if (ref->onRemove == db::RemovePolicy::Reference || ref->onRemove == db::RemovePolicy::StrongReference) {
 					// create many-to-many table link
-					mem::String name = toString(it.first, "_f_", fit.first);
+					mem::String name = mem::toString(it.first, "_f_", fit.first);
 					auto & source = it.first;
 					auto target = ref->scheme->getName();
 					TableRec table;
@@ -1059,7 +1059,7 @@ TableRec::TableRec(const db::Interface::Config &cfg, const db::Scheme *scheme) {
 		nameStream << name << "_uidx";
 		mem::Vector<mem::String> values;
 		for (auto &f : it.fields) {
-			values.emplace_back(f->getName().str());
+			values.emplace_back(f->getName().str<mem::Interface>());
 			nameStream << "_" << f->getName();
 		}
 		indexes.emplace(nameStream.str(), IndexRec(std::move(values), true));
@@ -1092,7 +1092,7 @@ TableRec::TableRec(const db::Interface::Config &cfg, const db::Scheme *scheme) {
 	}
 
 	if (withOids && !detached) {
-		indexes.emplace(toString(name, "_idx___oid"), IndexRec("__oid"));
+		indexes.emplace(mem::toString(name, "_idx___oid"), IndexRec("__oid"));
 	}
 }
 

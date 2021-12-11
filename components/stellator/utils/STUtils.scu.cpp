@@ -27,7 +27,6 @@ THE SOFTWARE.
 #include "STRequestAuthHandler.cc"
 #include "STSession.cc"
 
-#include "STContinueToken.cc"
 #include "STExternalSession.cc"
 #include "STJsonWebToken.cc"
 #include "STOutput.cc"

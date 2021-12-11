@@ -28,46 +28,114 @@ THE SOFTWARE.
 
 namespace stellator::config {
 
+// Common config rules:
+// Default limits used to cover only Proof-of-concept projects with fast prototyping
+// on production, all limits and keys should be defined manually for better performance
+// and security
+//
+// Absolute limits is a balance between covering most use cases and security weakness
+// You should think carefully, as it's hard to redefine them in launched project
+
+// Initial maximum size of variable field in application/x-www-form-urlencoded
+// Overridden by requests's InputConfig
 constexpr size_t getMaxVarSize() { return 255; }
+
+// Initial maximum size of request body (0 - no requests with payload allowed by default)
+// Overridden by requests's InputConfig
 constexpr size_t getMaxRequestSize() { return 0; }
+
+// Initial maximum size of uploaded file (0 - no file uploads allowed by default)
+// Overridden by requests's InputConfig
 constexpr size_t getMaxFileSize() { return 0; }
 
+// Fixed temporal frequency to call onFilterUpdate when uploads is processed
+// Overridden by requests's InputConfig
 constexpr auto getInputUpdateTime() { return stappler::TimeInterval::seconds(1); }
+
+// Relative to upload size frequency to call onFilterUpdate when uploads is processed (.0f = every 10%)
+// Overridden by requests's InputConfig
 constexpr auto getInputUpdateFrequency() { return 0.1f; }
 
+// Absolute maximum time until user is deauthenticated with default auth mechanism
+// User should call `update` within this time, or requests will be blocked
+// If you want larger idle time - use ExternalSession
+// 720 sec (12 min) historically optimal
 constexpr auto getMaxAuthTime() { return stappler::TimeInterval::seconds(720); }
+
+// Absolute maximum of failed login attempt until user will be blocked for `getMaxAuthTime`
+// If user's login is blocked, only way to bypass - remove records from __login storage scheme
 constexpr auto getMaxLoginFailure() { return 4; }
 
-constexpr size_t getMaxInputPostSize() { return 250_MiB; }
-constexpr size_t getMaxInputFileSize() { return 250_MiB; }
+// Absolute maximum of request payload size for methods, that have payload (POST historically)
+// Can not be overridden
+constexpr size_t getMaxInputPostSize() { return 2_GiB; }
+
+// Absolute maximum of uploaded file size
+// Can not be overridden
+constexpr size_t getMaxInputFileSize() { return 2_GiB; }
+
+// Absolute maximum of application/x-www-form-urlencoded variable size
+// Can not be overridden, use applicaton/json, applicaton/cbor for larger variables
 constexpr size_t getMaxInputVarSize() { return 8_KiB; }
 
+// Default maximum for Extra/Data scheme field types
+// Used when scheme-specific limits is calculated
 constexpr size_t getMaxExtraFieldSize() { return 8_KiB; }
 
+// Default minimum for Text scheme field (in bytes)
+// this values should require from application to define min/max values manually, as it more secure and optimal
 constexpr auto getDefaultTextMin() { return 3; }
+
+// Default maximum for Text scheme field (in bytes)
+// this values should require from application to define min/max values manually, as it more secure and optimal
 constexpr auto getDefaultTextMax() { return 256; }
 
+// Default salt for Password scheme field
+// Do not use default salt in systems, that require secure login
 inline auto getDefaultPasswordSalt() { return "SAUserPasswordKey"_weak; }
-inline auto getInternalPasswordKey() { return "Serenity Password Salt"_weak; }
 
+// Default storage time for internal key/value storage, 1 year default
+// No eternal values allowed
+// Be careful, default-generated server keys guaranteed to be stored only for this period since generated
 inline stappler::TimeInterval getKeyValueStorageTime() { return stappler::TimeInterval::seconds(60 * 60 * 24 * 365); }
+
+// Default storage time for internal values, stored in db, like error messages and login history
+// File-based crush reports and db update reports are eternal
 inline stappler::TimeInterval getInternalsStorageTime() { return stappler::TimeInterval::seconds(60 * 60 * 24 * 30); }
 
+// Internal key for in-memory storage to store current active db adapter
+// No reason to be customized
 constexpr auto getStorageInterfaceKey() { return "ST.StorageInterface"; }
+
+// Internal key prefix for in-memory storage to store additional adapter data, if required
+// No reason to be customized
 constexpr auto getTransactionPrefixKey() { return "ST.Tr."; } // limit for 6 chars to use with SOO opts (6 + 16 < 23)
+
+// Internal key prefix for in-memory storage to store additional adapter data, if required
+// No reason to be customized
 constexpr auto getTransactionStackKey() { return "ST.Transaction.Stack"; }
 
+// Prefix for temporary file, used to store upload data
 constexpr auto getUploadTmpFilePrefix() { return "sa.upload"; }
+
+// Prefix for temporary file, used to store data for uploaded image rescaling
 constexpr auto getUploadTmpImagePrefix() { return "sa.image"; }
 
+// Absolute maximum for storage subobject resolution system
+// No resolution will be performed if this depth is reach
+// Resolver requires a lot of memory, so, larger values weaken security for OOM attach
 constexpr uint16_t getResourceResolverMaxDepth() { return 4; }
 
-
+// Default session name for cookies
 constexpr auto getDefaultSessionName() { return "SID"; }
+
+// Default security salt for session token
 constexpr auto getDefaultSessionKey() { return "SerenitySession"; }
 
-constexpr auto getSerenityBroadcastChannelName() { return "serenity_broadcast"; }
+// Internal broadcast channel name, if DB supports external broadcasts (like PostgreSQL LISTEN)
+constexpr auto getStorageBroadcastChannelName() { return "serenity_broadcast"; }
 
+// Templates update interval, if inotify is not supported or limit is reached
 #if DEBUG
 constexpr auto getDefaultPugTemplateUpdateInterval() { return stappler::TimeInterval::seconds(3); }
 constexpr auto getDefaultDatabaseCleanupInterval() { return stappler::TimeInterval::seconds(60); }
@@ -76,8 +144,18 @@ constexpr auto getDefaultPugTemplateUpdateInterval() { return stappler::TimeInte
 constexpr auto getDefaultDatabaseCleanupInterval() { return stappler::TimeInterval::seconds(180); }
 #endif
 
+// Absolute maximum of opened db connections
+// Actual requires maximum is a sum of request processing threads, websocket processing threads, background threads,
+// and custom threads, so, it's significally lower then this value in most scenarios
+// In Serenity, first three categories are different, but in Stellator it's single thread pool
 constexpr int getMaxDatabaseConnections() { return 1024; }
 
+// Internal private key, used to generate real server's private key, if it was not defined
+// Generation process requires custom server secret, defined with SerenityServerKey in Serenity
+// usually, we generate it with `base64 < /dev/urandom | tr -d 'O0Il1+/' | head -c 44; printf '\n'`
+//
+// It's useful for development, but production requires manually defined private and public key
+// since generated key pair is temporary
 static constexpr auto INTERNAL_PRIVATE_KEY =
 R"PubKey(-----BEGIN RSA PRIVATE KEY-----
 MIIEpAIBAAKCAQEAwA+bb6EnVO9LKDg2X2Casr7FcnCaE6O98CV2FSn0+AezS8k3

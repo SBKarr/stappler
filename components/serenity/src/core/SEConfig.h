@@ -60,10 +60,9 @@ constexpr auto getDefaultStreamBlock() { return 1_KiB; }
 constexpr auto getDefaultSessionName() { return "SID"; }
 constexpr auto getDefaultSessionKey() { return "SerenitySession"; }
 
-constexpr auto getSerenityBroadcastChannelName() { return "serenity_broadcast"; }
+constexpr auto getStorageBroadcastChannelName() { return "serenity_broadcast"; }
 
 inline auto getDefaultPasswordSalt() { return "SAUserPasswordKey"_weak; }
-inline auto getInternalPasswordKey() { return "Serenity Password Salt"_weak; }
 
 constexpr auto getDefaultRetryTime() { return 100_msec; }
 

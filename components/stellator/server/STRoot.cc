@@ -64,6 +64,8 @@ Root::Root() {
 	_internal = new (_pool) Internal;
 	_internal->pool = _pool;
 	mem::pool::pop();
+
+	db::setStorageRoot(this);
 }
 
 Root::~Root() {
@@ -160,10 +162,6 @@ bool Root::run(const mem::Value &config) {
 	}, _pool);
 }
 
-void Root::onBroadcast(const mem::Value &) {
-
-}
-
 db::sql::Driver * Root::getDbDriver(mem::StringView driver) {
 	auto it = _internal->dbDrivers.find(driver);
 	if (it != _internal->dbDrivers.end()) {
@@ -244,6 +242,45 @@ void Root::scheduleCancel() {
 		_internal->mutex.lock();
 		_internal->shouldClose = true;
 		_internal->mutex.unlock();
+	}
+}
+
+void Root::scheduleAyncDbTask(const mem::Callback<mem::Function<void(const db::Transaction &)>(mem::pool_t *)> &setupCb) {
+	if (auto serv = stellator::mem::server()) {
+		stellator::Task::perform(serv, [&] (stellator::Task &task) {
+			auto cb = setupCb(task.pool());
+			task.addExecuteFn([cb = std::move(cb)] (const stellator::Task &task) -> bool {
+				task.performWithStorage([&] (const db::Transaction &t) {
+					t.performAsSystem([&] () -> bool {
+						cb(t);
+						return true;
+					});
+				});
+				return true;
+			});
+		});
+	}
+}
+
+mem::String Root::getDocuemntRoot() const {
+	return stellator::mem::server().getDocumentRoot().str<mem::Interface>();
+}
+
+const db::Scheme *Root::getFileScheme() const {
+	return stellator::mem::server().getFileScheme();
+}
+
+const db::Scheme *Root::getUserScheme() const {
+	return stellator::mem::server().getUserScheme();
+}
+
+void Root::onLocalBroadcast(const mem::Value &) {
+
+}
+
+void Root::onStorageTransaction(db::Transaction &t) {
+	if (auto serv = stellator::Server(stellator::mem::server())) {
+		serv.onStorageTransaction(t);
 	}
 }
 

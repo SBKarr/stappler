@@ -215,7 +215,7 @@ static void sa_server_timer_postgres_error(PollClient *cl, int epoll) {
 
 static void sa_server_timer_postgres_process(PollClient *cl, int epoll) {
 	if (!cl->server.getDbDriver()->consumeNotifications(db::pq::Driver::Handle(cl->ptr), [&] (mem::StringView name) {
-		if (name == config::getSerenityBroadcastChannelName()) {
+		if (name == config::getStorageBroadcastChannelName()) {
 			cl->server.checkBroadcasts();
 		}
 	})) {

@@ -29,7 +29,7 @@ THE SOFTWARE.
 namespace stellator {
 
 // Root stellator server singleton
-class Root : public mem::AllocBase {
+class Root : public db::StorageRoot, public mem::AllocBase {
 public:
 	static Root *getInstance();
 
@@ -39,11 +39,12 @@ public:
 	bool run(const mem::Value &);
 	bool run(mem::StringView addr = mem::StringView(), int port = 8080, size_t nWorkers = std::thread::hardware_concurrency());
 
-	void onBroadcast(const mem::Value &);
 	bool performTask(const Server &server, Task *task, bool performFirst);
 	bool scheduleTask(const Server &server, Task *task, mem::TimeInterval);
 
 	bool runFollowedTask(const Server &server, Task *task);
+
+	void onBroadcast(const mem::Value &);
 
 	db::sql::Driver * getDbDriver(mem::StringView);
 	db::sql::Driver * getRootDbDriver() const;
@@ -53,11 +54,13 @@ public:
 	size_t getThreadCount() const;
 	mem::pool_t *pool() const;
 
-	bool isDebugEnabled() const;
-	void setDebugEnabled(bool);
-
 	Server getRootServer() const;
 	Server getNextServer(const Server &) const;
+
+	virtual void scheduleAyncDbTask(const mem::Callback<mem::Function<void(const db::Transaction &)>(mem::pool_t *)> &setupCb) override;
+	virtual mem::String getDocuemntRoot() const override;
+	virtual const db::Scheme *getFileScheme() const override;
+	virtual const db::Scheme *getUserScheme() const override;
 
 protected:
 	struct Internal;
@@ -65,10 +68,11 @@ protected:
 	void onChildInit();
 	void onHeartBeat();
 
+	virtual void onLocalBroadcast(const mem::Value &) override;
+	virtual void onStorageTransaction(db::Transaction &) override;
+
 	mem::pool_t *_pool = nullptr;
 	Internal *_internal = nullptr;
-
-	std::atomic<bool> _debug = false;
 };
 
 }

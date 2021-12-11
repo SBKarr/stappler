@@ -456,7 +456,7 @@ bool Driver::isIdle(Connection conn) const {
 int Driver::listenForNotifications(Handle handle) const {
 	auto conn = getConnection(handle).get();
 
-	auto query = mem::toString("LISTEN ", config::getSerenityBroadcastChannelName(), ";");
+	auto query = mem::toString("LISTEN ", config::getStorageBroadcastChannelName(), ";");
 	int querySent = _handle->PQsendQuery(conn, query.data());
 	if (querySent == 0) {
 		std::cout << "[Postgres]: " << _handle->PQerrorMessage(conn) << "\n";
@@ -984,7 +984,7 @@ Driver::Connection Driver::getConnection(Handle _h) const {
 
 NS_DB_PQ_END
 
-#elif STELLATOR
+#else
 
 NS_DB_PQ_BEGIN
 

@@ -25,6 +25,7 @@ THE SOFTWARE.
 
 #include "SPCommon.h"
 
+#include "STContinueToken.cc"
 #include "STInputFile.cc"
 #include "STStorageAdapter.cc"
 #include "STStorageAuth.cc"

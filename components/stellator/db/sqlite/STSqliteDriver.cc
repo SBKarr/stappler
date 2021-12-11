@@ -199,8 +199,8 @@ Driver::Handle Driver::connect(const mem::Map<mem::StringView, mem::StringView> 
 			sqlite3_db_config(db, SQLITE_DBCONFIG_ENABLE_FKEY, 1, nullptr);
 
 			if (!journal.empty()) {
-				auto m = stappler::string::toupper<stappler::memory::PoolInterface>(journal);
-				auto mode = stappler::string::toupper(Driver_exec(p, db, "PRAGMA journal_mode;"));
+				auto m = stappler::string::toupper<mem::Interface>(journal);
+				auto mode = stappler::string::toupper<mem::Interface>(Driver_exec(p, db, "PRAGMA journal_mode;"));
 				if (mode.empty()) {
 					sqlite3_close(db);
 					break;
@@ -208,7 +208,7 @@ Driver::Handle Driver::connect(const mem::Map<mem::StringView, mem::StringView> 
 
 				if (mode != m) {
 					auto query = mem::toString("PRAGMA journal_mode = ", m);
-					auto cmode = stappler::string::toupper(Driver_exec(p, db, query));
+					auto cmode = stappler::string::toupper<mem::Interface>(Driver_exec(p, db, query));
 					if (mode.empty() || cmode != m) {
 						std::cout << "[sqlite::Driver] fail to enable journal_mode '" << m << "'\n";
 						sqlite3_close(db);

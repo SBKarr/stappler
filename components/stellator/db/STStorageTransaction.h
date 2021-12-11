@@ -162,7 +162,8 @@ protected:
 	};
 
 	friend struct TransactionGuard;
-	friend class Worker;
+	friend class Worker; // for transaction start|stop and role redefinition
+	friend class StorageRoot; // for transaction construction from stored data
 
 	bool beginTransaction() const;
 	bool endTransaction() const;

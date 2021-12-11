@@ -191,7 +191,7 @@ Query & Query::select(mem::Vector<int64_t> &&id) {
 
 Query & Query::select(mem::SpanView<int64_t> id) {
 	if (!id.empty()) {
-		selectIds = id.vec();
+		selectIds = id.vec<mem::Interface>();
 	} else {
 		selectIds = mem::Vector<int64_t>{-1};
 	}

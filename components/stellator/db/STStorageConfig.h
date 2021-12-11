@@ -76,11 +76,15 @@ constexpr stappler::TimeInterval operator"" _sec ( unsigned long long int val ) 
 constexpr stappler::TimeInterval operator"" _msec ( unsigned long long int val ) { return stappler::TimeInterval::milliseconds(val); }
 constexpr stappler::TimeInterval operator"" _mksec ( unsigned long long int val ) { return stappler::TimeInterval::microseconds(val); }
 
+class StorageRoot;
+
 namespace config {
 
 using namespace stellator::config;
 
 }
+
+void setStorageRoot(StorageRoot *);
 
 NS_DB_END
 
@@ -98,10 +102,19 @@ constexpr stappler::TimeInterval operator"" _sec ( unsigned long long int val ) 
 constexpr stappler::TimeInterval operator"" _msec ( unsigned long long int val ) { return stappler::TimeInterval::milliseconds(val); }
 constexpr stappler::TimeInterval operator"" _mksec ( unsigned long long int val ) { return stappler::TimeInterval::microseconds(val); }
 
+class StorageRoot;
+
 namespace config {
 
 constexpr auto getMaxAuthTime() { return 720_sec; }
 constexpr auto getMaxLoginFailure() { return 4; }
+
+constexpr size_t getMaxVarSize() { return 255; }
+constexpr size_t getMaxRequestSize() { return 0; }
+constexpr size_t getMaxFileSize() { return 0; }
+
+constexpr auto getInputUpdateTime() { return stappler::TimeInterval::seconds(1); }
+constexpr auto getInputUpdateFrequency() { return 0.1f; }
 
 constexpr size_t getMaxInputPostSize() { return 250_MiB; }
 constexpr size_t getMaxInputFileSize() { return 250_MiB; }
@@ -113,7 +126,6 @@ constexpr auto getDefaultTextMin() { return 3; }
 constexpr auto getDefaultTextMax() { return 256; }
 
 inline auto getDefaultPasswordSalt() { return "StapplerUserPasswordKey"_weak; }
-inline auto getInternalPasswordKey() { return "Stappler Password Salt"_weak; }
 
 inline stappler::TimeInterval getKeyValueStorageTime() { return stappler::TimeInterval::seconds(60 * 60 * 24 * 365); } // one year
 inline stappler::TimeInterval getInternalsStorageTime() { return stappler::TimeInterval::seconds(60 * 60 * 24 * 30); }
@@ -125,9 +137,13 @@ constexpr auto getTransactionStackKey() { return "ST.Transaction.Stack"; }
 constexpr auto getUploadTmpFilePrefix() { return "sa.upload"; }
 constexpr auto getUploadTmpImagePrefix() { return "sa.image"; }
 
+constexpr auto getStorageBroadcastChannelName() { return "serenity_broadcast"; }
+
 constexpr uint16_t getResourceResolverMaxDepth() { return 4; }
 
 }
+
+void setStorageRoot(StorageRoot *);
 
 NS_DB_END
 

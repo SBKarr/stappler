@@ -40,6 +40,7 @@ using namespace stappler::mem_pool;
 
 };
 
+class StorageRoot;
 class InputFile;
 
 class Adapter;
@@ -209,6 +210,45 @@ void local(Args && ...args) {
 }
 
 }
+
+// Default StorageRoot class is partially operational, requires customization for real systems
+class StorageRoot {
+public:
+	virtual ~StorageRoot() { }
+
+	virtual bool isDebugEnabled() const;
+	virtual void setDebugEnabled(bool v);
+
+	virtual void addErrorMessage(mem::Value &&data) const;
+	virtual void addDebugMessage(mem::Value &&data) const;
+
+	virtual void broadcast(const mem::Value &val);
+	virtual void broadcast(const mem::Bytes &val);
+
+	virtual Transaction acquireTransaction(const Adapter &adapter);
+	virtual Adapter getAdapterFromContext();
+
+	// Argument is a callback (function, that should not be stored), that return
+	// 	 function (that can and will be stored), allocated from specified memory pool;
+	// returned function should be called within async thread with usable db::Transaction to do its work
+	virtual void scheduleAyncDbTask(
+			const mem::Callback<mem::Function<void(const Transaction &)>(mem::pool_t *)> &setupCb);
+
+	virtual bool isAdministrative() const;
+	virtual mem::String getDocuemntRoot() const;
+	virtual const Scheme *getFileScheme() const;
+	virtual const Scheme *getUserScheme() const;
+	virtual InputFile *getFileFromContext(int64_t) const;
+	virtual internals::RequestData getRequestData() const;
+	virtual int64_t getUserIdFromContext() const;
+
+protected:
+	virtual void onLocalBroadcast(const mem::Value &) { }
+	virtual void onStorageTransaction(Transaction &) { }
+
+	mutable std::mutex _debugMutex;
+	std::atomic<bool> _debug = false;
+};
 
 
 struct InputConfig {
