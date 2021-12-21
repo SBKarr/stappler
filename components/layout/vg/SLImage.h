@@ -25,7 +25,6 @@ THE SOFTWARE.
 
 #include "SPBitmap.h"
 #include "SLPath.h"
-#include "SLSubscription.h"
 
 NS_LAYOUT_BEGIN
 

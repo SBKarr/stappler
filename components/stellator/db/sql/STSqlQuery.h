@@ -24,17 +24,15 @@ THE SOFTWARE.
 #define STELLATOR_DB_SQL_STSQLQUERY_H_
 
 #include "STStorageInterface.h"
-#include "STSqlResult.h"
 
 NS_DB_SQL_BEGIN
 
 class SqlQuery : public stappler::sql::Query<db::Binder, mem::Interface> {
 public:
-	struct Context {
+	struct Context : FieldResolver {
+		Context(SqlQuery &, const Scheme &scheme, const Worker &w, const db::Query &q);
+
 		SqlQuery *_this;
-		Worker *worker;
-		const Scheme *scheme;
-		const db::Query *q;
 
 		bool hasAltLimit = false;
 		bool softLimitIsFts = false;
@@ -49,8 +47,8 @@ public:
 
 	void clear();
 
-	bool writeQuery(Worker &, const db::Scheme &scheme, const db::Query &q);
-	bool writeQuery(Worker &worker, const db::Scheme &scheme, uint64_t, const db::Field &f, const db::Query &q);
+	bool writeQuery(Context &);
+	bool writeQuery(Context &, const db::Scheme &scheme, uint64_t, const db::Field &f);
 
 	void writeWhere(SqlQuery::SelectWhere &, db::Operator op, const db::Scheme &, const db::Query &);
 	void writeWhere(SqlQuery::WhereContinue &, db::Operator op, const db::Scheme &, const db::Query &);
@@ -61,7 +59,7 @@ public:
 	void writeOrdering(SqlQuery::SelectFrom &, const db::Scheme &, const db::Query &, bool dropLimits = false);
 
 	SelectFrom writeSelectFrom(GenericQuery &q, const db::QueryList::Item &item, bool idOnly, const mem::StringView &scheme, const mem::StringView &field, bool isSimpleGet = false);
-	SelectFrom writeSelectFrom(Select &sel, db::Worker &, const db::Query &);
+	SelectFrom writeSelectFrom(Select &sel, Context &);
 
 	void writeQueryReqest(SqlQuery::SelectFrom &s, const db::QueryList::Item &item);
 	void writeQueryListItem(GenericQuery &sq, const db::QueryList &list, size_t idx, bool idOnly, const db::Field *field = nullptr, bool forSubquery = false);
@@ -85,8 +83,6 @@ public:
 	mem::StringView getFullTextQuery(const db::Scheme &scheme, const db::Field &f, const db::Query::Select &it);
 
 protected:
-	Context initContext(Worker &, const db::Scheme &scheme, const db::Query &q);
-
 	mem::Map<mem::String, mem::String> _fulltextQueries;
 };
 

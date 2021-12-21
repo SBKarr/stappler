@@ -61,7 +61,7 @@ public:
 	void broadcast(mem::StringView url, mem::Value &&val, bool exclusive) const;
 
 	template <typename Callback>
-	bool performInTransaction(Callback && t);
+	bool performInTransaction(Callback && t) const;
 
 	mem::Vector<int64_t> getReferenceParents(const Scheme &, uint64_t oid, const Scheme *, const Field *) const;
 
@@ -76,6 +76,7 @@ protected:
 	mem::Vector<int64_t> performQueryListForIds(const QueryList &, size_t count = stappler::maxOf<size_t>()) const;
 	mem::Value performQueryList(const QueryList &, size_t count = stappler::maxOf<size_t>(), bool forUpdate = false) const;
 
+	bool select(Worker &, const Query &, const mem::Callback<void(Result &)> &) const;
 	mem::Value select(Worker &, const Query &) const;
 
 	mem::Value create(Worker &, mem::Value &) const;
@@ -109,7 +110,7 @@ protected:
 };
 
 template <typename Callback>
-inline bool Adapter::performInTransaction(Callback && t) {
+inline bool Adapter::performInTransaction(Callback && t) const {
 	if (isInTransaction()) {
 		if (!t()) {
 			cancelTransaction();

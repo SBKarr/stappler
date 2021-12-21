@@ -32,7 +32,9 @@ mem::Value SqlHandle::getFileField(Worker &w, SqlQuery &query, uint64_t oid, uin
 		}).select();
 		mem::String alias("t"); // do not touch;
 
-		w.readFields(*fs, [&] (const mem::StringView &name, const Field *) {
+		FieldResolver resv(*fs, w);
+
+		resv.readFields([&] (const mem::StringView &name, const Field *) {
 			sel = sel.field(SqlQuery::Field("t", name));
 		});
 
@@ -45,7 +47,7 @@ mem::Value SqlHandle::getFileField(Worker &w, SqlQuery &query, uint64_t oid, uin
 			}).finalize();
 		}
 
-		auto ret = selectValueQuery(*fs, query);
+		auto ret = selectValueQuery(*fs, query, resv.getVirtuals());
 		if (ret.isArray()) {
 			ret = std::move(ret.getValue(0));
 		}
@@ -81,7 +83,7 @@ size_t SqlHandle::getFileCount(Worker &w, SqlQuery &query, uint64_t oid, uint64_
 mem::Value SqlHandle::getArrayField(Worker &w, SqlQuery &query, uint64_t oid, const Field &f) {
 	query.select("data").from(mem::toString(w.scheme().getName(), "_f_", f.getName()))
 		.where(mem::toString(w.scheme().getName(), "_id"), Comparation::Equal, oid).finalize();
-	return selectValueQuery(f, query);
+	return selectValueQuery(f, query, mem::Vector<const Field *>());
 }
 
 size_t SqlHandle::getArrayCount(Worker &w, SqlQuery &query, uint64_t oid, const Field &f) {
@@ -104,7 +106,8 @@ mem::Value SqlHandle::getObjectField(Worker &w, SqlQuery &query, uint64_t oid, u
 		}).select();
 		mem::String alias("t"); // do not touch;
 
-		w.readFields(*fs, [&] (const mem::StringView &name, const Field *) {
+		FieldResolver resv(*fs, w);
+		resv.readFields([&] (const mem::StringView &name, const Field *) {
 			sel = sel.field(SqlQuery::Field("t", name));
 		});
 
@@ -117,7 +120,10 @@ mem::Value SqlHandle::getObjectField(Worker &w, SqlQuery &query, uint64_t oid, u
 			}).finalize();
 		}
 
-		auto ret = selectValueQuery(*fs, query);
+		UpdateFlags flags = UpdateFlags::None;
+		if (w.shouldIncludeAll()) { flags |= UpdateFlags::GetAll; }
+
+		auto ret = selectValueQuery(*fs, query, resv.getVirtuals());
 		if (ret.isArray()) {
 			ret = std::move(ret.getValue(0));
 		}
@@ -153,8 +159,14 @@ size_t SqlHandle::getObjectCount(Worker &w, SqlQuery &query, uint64_t oid, uint6
 }
 
 mem::Value SqlHandle::getSetField(Worker &w, SqlQuery &query, uint64_t oid, const Field &f, const db::Query &q) {
-	if (query.writeQuery(w, w.scheme(), oid, f, q)) {
-		return selectValueQuery(*f.getForeignScheme(), query);
+	auto fs = f.getForeignScheme();
+	if (!fs) {
+		return mem::Value();
+	}
+
+	SqlQuery::Context ctx(query, *fs, w, q);
+	if (query.writeQuery(ctx, w.scheme(), oid, f)) {
+		return selectValueQuery(*f.getForeignScheme(), query, ctx.getVirtuals());
 	}
 	return mem::Value();
 }
@@ -203,13 +215,21 @@ size_t SqlHandle::getSetCount(Worker &w, SqlQuery &query, uint64_t oid, const Fi
 }
 
 mem::Value SqlHandle::getViewField(Worker &w, SqlQuery &query, uint64_t oid, const Field &f, const db::Query &q) {
-	if (query.writeQuery(w, w.scheme(), oid, f, q)) {
-		auto fs = f.getForeignScheme();
-		auto ret = selectValueQuery(*fs, query);
+	auto fs = f.getForeignScheme();
+	if (!fs) {
+		return mem::Value();
+	}
+
+	SqlQuery::Context ctx(query, *fs, w, q);
+	if (query.writeQuery(ctx, w.scheme(), oid, f)) {
+		auto ret = selectValueQuery(*ctx.scheme, query, ctx.getVirtuals());
 		if (ret.isArray() && ret.size() > 0) {
 			query.clear();
-			Handle_writeSelectViewDataQuery(query, w.scheme(), oid, f, ret);
-			selectValueQuery(ret, f, query);
+
+			auto v = f.getSlot<FieldView>();
+
+			Handle_writeSelectViewDataQuery(query, w.scheme(), oid, *v, ret);
+			selectValueQuery(ret, *v, query);
 			return ret;
 		}
 	}
@@ -248,15 +268,32 @@ size_t SqlHandle::getViewCount(Worker &w, SqlQuery &query, uint64_t oid, const F
 }
 
 mem::Value SqlHandle::getSimpleField(Worker &w, SqlQuery &query, uint64_t oid, const Field &f) {
-	query.select(f.getName()).from(w.scheme().getName()).where("__oid", Comparation::Equal, oid).finalize();
-	auto ret = selectValueQuery(w.scheme(), query);
-	if (ret.isArray()) {
-		ret = std::move(ret.getValue(0));
+	if (f.getType() == Type::Virtual) {
+		auto v = f.getSlot<FieldVirtual>();
+		auto sel = query.select("__oid");
+		for (auto &it : v->requires) {
+			sel.field(it);
+		}
+		sel.from(w.scheme().getName()).where("__oid", Comparation::Equal, oid).finalize();
+		auto ret = selectValueQuery(w.scheme(), query, mem::Vector<const Field *>({&f}));
+		if (ret.isArray()) {
+			ret = std::move(ret.getValue(0));
+		}
+		if (ret.isDictionary()) {
+			ret = ret.getValue(f.getName());
+		}
+		return ret;
+	} else {
+		query.select(f.getName()).from(w.scheme().getName()).where("__oid", Comparation::Equal, oid).finalize();
+		auto ret = selectValueQuery(w.scheme(), query, mem::Vector<const Field *>());
+		if (ret.isArray()) {
+			ret = std::move(ret.getValue(0));
+		}
+		if (ret.isDictionary()) {
+			ret = ret.getValue(f.getName());
+		}
+		return ret;
 	}
-	if (ret.isDictionary()) {
-		ret = ret.getValue(f.getName());
-	}
-	return ret;
 }
 
 size_t SqlHandle::getSimpleCount(Worker &w, SqlQuery &query, uint64_t oid, const Field &f) {

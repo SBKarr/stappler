@@ -1,5 +1,5 @@
 /**
-Copyright (c) 2016-2017 Roman Katuntsev <sbkarr@stappler.org>
+Copyright (c) 2016-2021 Roman Katuntsev <sbkarr@stappler.org>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -20,13 +20,22 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 **/
 
-#ifndef LAYOUT_TYPES_SLSUBSCRIPTION_H_
-#define LAYOUT_TYPES_SLSUBSCRIPTION_H_
+#ifndef COMMON_UTILS_REF_SPDATASUBSCRIPTION_H_
+#define COMMON_UTILS_REF_SPDATASUBSCRIPTION_H_
 
-#include "SPLayout.h"
+#include "SPRef.h"
 
-NS_LAYOUT_BEGIN
+// historically, Subscription and related utils placed in `data` namespace, not in root namespace
+// keep it for backward compatibility
+namespace stappler::data {
 
+/* Subscription is a refcounted class, that allow
+ * provider object (derived from Subscription) to post some update flags,
+ * and subscribers (any other objects) to receive it via `check` call
+ *
+ * Every registered subscriber has it's own id, that used to check for updates
+ * since last call of `check`
+ */
 class Subscription : public Ref {
 public:
 	using Id = ValueWrapper<uint64_t, class IdClassFlag>;
@@ -57,26 +66,38 @@ public:
 		}
 	};
 
+	// get unique subscription id
 	static Id getNextId();
 
+	// initial flags value, every new subscriber receive this on first call of 'check'
 	static Flags Initial;
 
-	~Subscription();
+	virtual ~Subscription();
 
+	// safe way to get Flag with specific bit set, prevents UB
 	template <class T>
 	static Flags _Flag(T idx) { return ((uint8_t)idx == 0 || (uint8_t)idx > (sizeof(Flags) * 8))?Flags(0):Flags(1 << (uint8_t)idx); }
 
 	inline static Flags Flag() { return Flags(0); }
 
+	// Variadic way to get specific bits set via multiple arguments of different integral types
 	template <class T, class... Args>
 	static Flags Flag(T val, Args&&... args) { return _Flag(val) | Flag(args...); }
 
+	// Set subscription dirty flags
 	void setDirty(Flags flags = Initial, bool forwardedOnly = false);
 
+	// subscribe with specific object id
 	bool subscribe(Id);
+
+	// unsubscribe object by id
 	bool unsubscribe(Id);
+
+	// check wich flags has been set dirty since last check
 	Flags check(Id);
 
+	// subscription can actually be a reference to other subscription, in this case
+	// current subscription works as bidirectional forwarder for reference subscription
 	void setForwardedSubscription(Subscription *);
 
 protected:
@@ -85,6 +106,12 @@ protected:
 	Map<Id, Flags> _flags;
 };
 
+/** Binding is an interface or slot for subscription, that handles
+ * - unique id acquisition
+ * - proper refcounting for binded subscription
+ * - easy access and not-null check for binded subscription
+ *
+ */
 template <class T = Subscription>
 class Binding {
 public:
@@ -199,6 +226,6 @@ T *Binding<T>::get() const {
 	return _subscription;
 }
 
-NS_LAYOUT_END
+}
 
-#endif /* LAYOUT_TYPES_SLSUBSCRIPTION_H_ */
+#endif /* COMMON_UTILS_REF_SPDATASUBSCRIPTION_H_ */

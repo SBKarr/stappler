@@ -609,17 +609,21 @@ void Root::onBroadcast(const data::Value &res) {
 }
 
 void Root::addDb(mem::pool_t *p, StringView str) {
-	if (!_dbs) {
-		_dbs = new (_pool) Vector<StringView>;
-	}
+	mem::perform([&] {
+		if (!_dbs) {
+			_dbs = new (_pool) Vector<StringView>;
+		}
 
-	_dbs->emplace_back(str.pdup(_pool));
+		mem::emplace_ordered(*_dbs, str.pdup(_pool));
+	}, _pool);
 }
 
 void Root::setDbParams(mem::pool_t *p, StringView str) {
-	_dbParams = new (_pool) Map<StringView, StringView>;
+	mem::perform([&] {
+		_dbParams = new (_pool) Map<StringView, StringView>;
 
-	parseParameterList(*_dbParams, str);
+		parseParameterList(*_dbParams, str);
+	}, _pool);
 }
 
 db::sql::Driver *Root::getDbDriver(StringView name) const {

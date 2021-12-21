@@ -432,7 +432,8 @@ static mem::Vector<mem::StringView> Transaction_getQueryName(Worker &worker, con
 	mem::Vector<mem::StringView> names;
 	if (!worker.shouldIncludeAll()) {
 		names.reserve(worker.scheme().getFields().size());
-		worker.readFields(worker.scheme(), query, [&] (const mem::StringView &name, const db::Field *) {
+		FieldResolver resv(worker.scheme(), worker, query);
+		resv.readFields([&] (const mem::StringView &name, const db::Field *) {
 			auto it = std::upper_bound(names.begin(), names.end(), name);
 			if (it == names.end()) {
 				names.emplace_back(name);

@@ -191,8 +191,6 @@ namespace stappler::data {
 
 class Source;
 
-using Subscription = layout::Subscription;
-template <class T> using Binding = layout::Binding<T>;
 template <class T> class Listener;
 
 }

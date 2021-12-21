@@ -198,8 +198,8 @@ static void writeObjectRemoveTrigger(mem::StringStream &stream, const db::Scheme
 static void writeAfterTrigger(mem::StringStream &stream, const db::Scheme *s, const mem::String &triggerName) {
 	auto &fields = s->getFields();
 
-	auto writeInsertDelta = [&] (Handle::DeltaAction a) {
-		if (a == Handle::DeltaAction::Create || a == Handle::DeltaAction::Update) {
+	auto writeInsertDelta = [&] (DeltaAction a) {
+		if (a == DeltaAction::Create || a == DeltaAction::Update) {
 			stream << "\t\tINSERT INTO " << Handle::getNameForDelta(*s) << "(\"object\",\"action\",\"time\",\"user\")"
 				"VALUES(NEW.__oid," << stappler::toInt(a) << ",current_setting('serenity.now')::bigint,current_setting('serenity.user')::bigint);\n";
 		} else {
@@ -211,7 +211,7 @@ static void writeAfterTrigger(mem::StringStream &stream, const db::Scheme *s, co
 	stream << "CREATE OR REPLACE FUNCTION " << triggerName << "_func() RETURNS TRIGGER AS $" << triggerName
 			<< "$ BEGIN\n\tIF (TG_OP = 'INSERT') THEN\n";
 	if (s->hasDelta()) {
-		writeInsertDelta(Handle::DeltaAction::Create);
+		writeInsertDelta(DeltaAction::Create);
 	}
 	stream << "\tELSIF (TG_OP = 'UPDATE') THEN\n";
 	for (auto &it : fields) {
@@ -225,7 +225,7 @@ static void writeAfterTrigger(mem::StringStream &stream, const db::Scheme *s, co
 		}
 	}
 	if (s->hasDelta()) {
-		writeInsertDelta(Handle::DeltaAction::Update);
+		writeInsertDelta(DeltaAction::Update);
 	}
 	stream << "\tELSIF (TG_OP = 'DELETE') THEN\n";
 	for (auto &it : fields) {
@@ -239,7 +239,7 @@ static void writeAfterTrigger(mem::StringStream &stream, const db::Scheme *s, co
 		}
 	}
 	if (s->hasDelta()) {
-		writeInsertDelta(Handle::DeltaAction::Delete);
+		writeInsertDelta(DeltaAction::Delete);
 	}
 	stream << "\tEND IF;\n\tRETURN NULL;\n";
 	stream << "\nEND; $" << triggerName << "$ LANGUAGE plpgsql;\n";

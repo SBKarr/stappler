@@ -1,5 +1,5 @@
 /**
-Copyright (c) 2016 Roman Katuntsev <sbkarr@stappler.org>
+Copyright (c) 2016-2021 Roman Katuntsev <sbkarr@stappler.org>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -20,12 +20,12 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 **/
 
-#ifndef LIBS_STAPPLER_CORE_STRUCT_SPSYNCRWLOCK_H_
-#define LIBS_STAPPLER_CORE_STRUCT_SPSYNCRWLOCK_H_
+#ifndef COMMON_UTILS_REF_SPSYNCRWLOCK_H_
+#define COMMON_UTILS_REF_SPSYNCRWLOCK_H_
 
-#include "SPDefine.h"
+#include "SPDataSubscription.h"
 
-NS_SP_BEGIN
+namespace stappler {
 
 class SyncRWLock : public data::Subscription {
 public:
@@ -80,6 +80,6 @@ protected:
 	std::deque<std::pair<LockPtr, LockAcquiredCallback>> _lockReadQueue;
 };
 
-NS_SP_END
+}
 
-#endif /* LIBS_STAPPLER_CORE_STRUCT_SPSYNCRWLOCK_H_ */
+#endif /* COMMON_UTILS_REF_SPSYNCRWLOCK_H_ */

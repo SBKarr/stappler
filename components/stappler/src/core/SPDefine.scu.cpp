@@ -30,7 +30,6 @@ THE SOFTWARE.
 #include "SPStapplerLog.cc"
 #include "SPDelayedReleaser.cc"
 #include "SPSocketServer.cc"
-#include "SPSyncRWLock.cc"
 #include "SPDataSource.cc"
 #include "SPDataValueNetwork.cc"
 #include "SPEvent.cc"

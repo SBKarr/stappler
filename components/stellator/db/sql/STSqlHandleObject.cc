@@ -75,14 +75,41 @@ static mem::Value Handle_preparePostUpdate(mem::Value &data, const mem::Map<mem:
 	return postUpdate;
 }
 
+bool SqlHandle::select(Worker &worker, const Query &q, const mem::Callback<void(Result &)> &cb) {
+	bool ret = false;
+	auto &scheme = worker.scheme();
+	makeQuery([&] (SqlQuery &query) {
+		auto ordField = q.getQueryField();
+		if (ordField.empty()) {
+			SqlQuery::Context ctx(query, scheme, worker, q);
+			query.writeQuery(ctx);
+			ret = selectQuery(query, cb);
+		} else if (auto f = scheme.getField(ordField)) {
+			switch (f->getType()) {
+			case Type::Set: {
+				SqlQuery::Context ctx(query, *f->getForeignScheme(), worker, q);
+				if (query.writeQuery(ctx, scheme, q.getQueryId(), *f)) {
+					ret = selectQuery(query, cb);
+				}
+				break;
+			}
+			default:
+				break;
+			}
+		}
+	});
+	return ret;
+}
+
 mem::Value SqlHandle::select(Worker &worker, const db::Query &q) {
 	mem::Value ret;
 	auto &scheme = worker.scheme();
 	makeQuery([&] (SqlQuery &query) {
 		auto ordField = q.getQueryField();
 		if (ordField.empty()) {
-			query.writeQuery(worker, scheme, q);
-			ret = selectValueQuery(scheme, query);
+			SqlQuery::Context ctx(query, scheme, worker, q);
+			query.writeQuery(ctx);
+			ret = selectValueQuery(scheme, query, ctx.getVirtuals());
 		} else if (auto f = scheme.getField(ordField)) {
 			switch (f->getType()) {
 			case Type::Set:
@@ -408,16 +435,20 @@ mem::Value SqlHandle::patch(Worker &worker, uint64_t oid, const mem::Value &patc
 				}
 			});
 		}
+		FieldResolver resv(worker.scheme(), worker);
 		if (!worker.shouldIncludeNone()) {
 			auto returning = q.returning();
-			worker.readFields(worker.scheme(), [&] (const mem::StringView &name, const Field *) {
+			for (auto &it : data.asDict()) {
+				resv.include(it.first);
+			}
+			resv.readFields([&] (const mem::StringView &name, const Field *) {
 				returning.field(name);
-			}, data);
+			});
 		} else {
 			q.returning().field("__oid").finalize();
 		}
 
-		auto retVal = selectValueQuery(worker.scheme(), query);
+		auto retVal = selectValueQuery(worker.scheme(), query, resv.getVirtuals());
 		if (retVal.isArray() && retVal.size() == 1) {
 			mem::Value obj = std::move(retVal.getValue(0));
 			int64_t id = obj.getInteger("__oid");
@@ -610,12 +641,14 @@ mem::Vector<int64_t> SqlHandle::performQueryListForIds(const QueryList &list, si
 mem::Value SqlHandle::performQueryList(const QueryList &list, size_t count, bool forUpdate) {
 	mem::Value ret;
 	makeQuery([&] (SqlQuery &query) {
+		FieldResolver resv(*list.getScheme(), list.getTopQuery());
 		query.writeQueryList(list, false, count);
 		if (forUpdate) {
 			query << "FOR UPDATE";
 		}
 		query.finalize();
-		ret = selectValueQuery(*list.getScheme(), query);
+
+		ret = selectValueQuery(*list.getScheme(), query, resv.getVirtuals());
 	});
 	return ret;
 }

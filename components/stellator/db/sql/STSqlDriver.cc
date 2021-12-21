@@ -34,7 +34,7 @@ Driver *Driver::open(mem::pool_t *pool, mem::StringView path, const void *extern
 	} else if (path.starts_with("pgsql:")) {
 		path += "pgsql:"_len;
 		ret = pq::Driver::open(path, external);
-	} else if (path == "sqlite3") {
+	} else if (path == "sqlite" || path == "sqlite3") {
 		ret = sqlite::Driver::open(path);
 	}
 	mem::pool::pop();

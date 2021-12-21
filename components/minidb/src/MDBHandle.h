@@ -62,6 +62,7 @@ public:
 	virtual bool endTransaction() override;
 
 public:
+	virtual bool select(Worker &, const Query &, const mem::Callback<void(Result &)> &) override;
 	virtual mem::Value select(Worker &, const db::Query &) override;
 
 	virtual mem::Value create(Worker &, mem::Value &) override;

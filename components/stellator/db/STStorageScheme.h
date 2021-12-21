@@ -155,6 +155,7 @@ public: // worker interface
 	template <typename Storage, typename _Value> auto get(Storage &&, _Value &&, std::initializer_list<mem::StringView> &&fields, UpdateFlags = UpdateFlags::None) const -> mem::Value;
 	template <typename Storage, typename _Value> auto get(Storage &&, _Value &&, std::initializer_list<const char *> &&fields, UpdateFlags = UpdateFlags::None) const -> mem::Value;
 	template <typename Storage, typename _Value> auto get(Storage &&, _Value &&, std::initializer_list<const Field *> &&fields, UpdateFlags = UpdateFlags::None) const -> mem::Value;
+	template <typename Storage, typename _Value> auto get(Storage &&, _Value &&, mem::SpanView<const Field *> fields, UpdateFlags = UpdateFlags::None) const -> mem::Value;
 
 	// Select objects by query
 	// - db::Transaction, db::Query
@@ -319,6 +320,11 @@ inline auto Scheme::get(Storage &&s, _Value &&v, std::initializer_list<const cha
 template <typename Storage, typename _Value>
 inline auto Scheme::get(Storage &&s, _Value &&v, std::initializer_list<const Field *> &&fields, UpdateFlags flags) const -> mem::Value {
 	return Worker(*this, std::forward<Storage>(s)).get(std::forward<_Value>(v), std::move(fields), flags);
+}
+
+template <typename Storage, typename _Value>
+inline auto Scheme::get(Storage &&s, _Value &&v, mem::SpanView<const Field *> fields, UpdateFlags flags) const -> mem::Value {
+	return Worker(*this, std::forward<Storage>(s)).get(std::forward<_Value>(v), fields, flags);
 }
 
 template <typename T, typename ... Args>

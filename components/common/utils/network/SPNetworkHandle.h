@@ -30,6 +30,7 @@ THE SOFTWARE.
 // CURL predef;
 
 using CURL = void;
+using CURLSH = void;
 struct curl_slist;
 
 NS_SP_BEGIN
@@ -52,6 +53,24 @@ public:
 		PKey, // custom serenity method
 	};
 
+	struct Context {
+		void *userdata = nullptr;
+		CURL *curl = nullptr;
+		CURLSH *share = nullptr;
+		NetworkHandle *handle = nullptr;
+
+		curl_slist *headers = nullptr;
+		curl_slist *mailTo = nullptr;
+
+		FILE *inputFile = nullptr;
+		FILE *outputFile = nullptr;
+		size_t inputPos = 0;
+
+		int code = 0;
+		bool success = false;
+		std::array<char, 256> error = { 0 };
+	};
+
 	using ProgressCallback = Function<int(int64_t, int64_t)>;
 	using IOCallback = Function<size_t(char *data, size_t size)>;
 
@@ -59,12 +78,12 @@ public:
 
 public:
 	NetworkHandle();
-	~NetworkHandle();
+	virtual ~NetworkHandle();
 
 	NetworkHandle(NetworkHandle &&) = default;
 	NetworkHandle &operator=(NetworkHandle &&) = default;
 
-	bool init(Method method, const StringView &url);
+	virtual bool init(Method method, const StringView &url);
 	bool perform();
 	bool perform(const Callback<bool(CURL *)> &onBeforePerform, const Callback<bool(CURL *)> &onAfterPerform);
 
@@ -128,9 +147,11 @@ public:
 	void setConnectTimeout(int);
 	void setLowSpeedLimit(int time, size_t limit);
 
+	virtual bool prepare(Context *, const Callback<bool(CURL *)> &onBeforePerform);
+	virtual bool finalize(Context *, const Callback<bool(CURL *)> &onAfterPerform);
+
 protected:
 	struct Network;
-	struct Context;
 
 	friend struct Network;
 	friend class NetworkMultiHandle;
@@ -230,9 +251,6 @@ protected:
 	bool setupMethodPut(CURL *curl, FILE * & outputFile);
 	bool setupMethodDelete(CURL *curl);
 	bool setupMethodSmpt(CURL *curl, FILE * & outputFile);
-
-	bool prepare(Context *, const Callback<bool(CURL *)> &onBeforePerform);
-	bool finalize(Context *, const Callback<bool(CURL *)> &onAfterPerform, long code);
 };
 
 class NetworkMultiHandle {

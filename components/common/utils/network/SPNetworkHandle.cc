@@ -1,8 +1,5 @@
-// This is an open source non-commercial project. Dear PVS-Studio, please check it.
-// PVS-Studio Static Code Analyzer for C, C++ and C#: http://www.viva64.com
-
 /**
-Copyright (c) 2016-2020 Roman Katuntsev <sbkarr@stappler.org>
+Copyright (c) 2016-2021 Roman Katuntsev <sbkarr@stappler.org>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -35,6 +32,7 @@ THE SOFTWARE.
 #include "SPCrypto.h"
 
 #ifdef LINUX
+// In linux, MIME types for downloaded files defined in extra FS attributes
 #include <sys/types.h>
 #include <sys/xattr.h>
 #include <sys/stat.h>
@@ -386,7 +384,7 @@ bool NetworkHandle::setupRootCert(CURL *curl, const StringView &certPath) {
 
 bool NetworkHandle::setupHeaders(CURL *curl, const Vector<String> &vec, curl_slist **headers, const StringView &keySign) {
 	bool check = true;
-	if (vec.size() > 0 || !keySign.empty()) {
+	if (!vec.empty() || !keySign.empty() || *headers) {
 		for (const auto &str : vec) {
 			if (_method == Method::Get || _method == Method::Head || _method == Method::Delete) {
 				if (StringView(str).starts_with("Content-Type:")) {
@@ -631,7 +629,9 @@ void NetworkHandle::setCookieFile(const StringView &str) {
 	_cookieFile = str.str();
 }
 void NetworkHandle::setUserAgent(const StringView &str) {
-	_userAgent = str.str();
+	if (_userAgent != str) {
+		_userAgent = str.str();
+	}
 }
 void NetworkHandle::setUrl(const StringView &url) {
 	_url = url.str();

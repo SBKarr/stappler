@@ -388,21 +388,21 @@ void TableRec::writeCompareResult(Handle &h, mem::StringStream &outstream,
 				writeTriggerHeader(name, t,mem::StringView());
 				outstream << " BEGIN"
 						"\n\tINSERT INTO " << t.targetTable << "(\"object\",\"action\",\"time\",\"user\") VALUES"
-						"(OLD.__oid," << stappler::toInt(Handle::DeltaAction::Delete) << ",stellator_now(),stellator_user());"
+						"(OLD.__oid," << stappler::toInt(DeltaAction::Delete) << ",stellator_now(),stellator_user());"
 						"\nEND;\n";
 				break;
 			case TriggerRec::Update:
 				writeTriggerHeader(name, t,mem::StringView());
 				outstream << " BEGIN"
 						"\n\tINSERT INTO " << t.targetTable << "(\"object\",\"action\",\"time\",\"user\") VALUES"
-						"(NEW.__oid," << stappler::toInt(Handle::DeltaAction::Update) << ",stellator_now(),stellator_user());"
+						"(NEW.__oid," << stappler::toInt(DeltaAction::Update) << ",stellator_now(),stellator_user());"
 						"\nEND;\n";
 				break;
 			case TriggerRec::Insert:
 				writeTriggerHeader(name, t,mem::StringView());
 				outstream << " BEGIN"
 						"\n\tINSERT INTO " << t.targetTable << "(\"object\",\"action\",\"time\",\"user\") VALUES"
-						"(OLD.__oid," << stappler::toInt(Handle::DeltaAction::Create) << ",stellator_now(),stellator_user());"
+						"(OLD.__oid," << stappler::toInt(DeltaAction::Create) << ",stellator_now(),stellator_user());"
 						"\nEND;\n";
 				break;
 			}

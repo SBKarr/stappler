@@ -88,6 +88,11 @@ int64_t Handle::getDeltaValue(const Scheme &scheme, const db::FieldView &view, u
 	return 0;
 }
 
+
+bool Handle::select(Worker &, const Query &, const mem::Callback<void(Result &)> &) {
+	return false;
+}
+
 mem::Value Handle::select(Worker &w, const db::Query &q) {
 	TransactionContext ctx(this);
 	return getTransaction().select(w, q);

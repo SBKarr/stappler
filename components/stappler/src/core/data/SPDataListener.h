@@ -24,7 +24,6 @@ THE SOFTWARE.
 #define LIBS_STAPPLER_COMPONENTS_SPDATALISTENER_H_
 
 #include "SPDefine.h"
-#include "SLSubscription.h"
 #include "base/CCDirector.h"
 #include "base/CCScheduler.h"
 

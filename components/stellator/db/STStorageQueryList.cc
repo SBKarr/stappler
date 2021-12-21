@@ -288,7 +288,7 @@ const mem::Set<const Field *> &QueryList::Item::getQueryFields() const {
 	return fields.getResolves();
 }
 
-void QueryList::readFields(const Scheme &scheme, const mem::Set<const Field *> &fields, const FieldCallback &cb, bool isSimpleGet) {
+/*void QueryList::readFields(const Scheme &scheme, const mem::Set<const Field *> &fields, const FieldCallback &cb, bool isSimpleGet) {
 	if (!fields.empty()) {
 		cb("__oid", nullptr);
 		for (auto &it : fields) {
@@ -324,7 +324,7 @@ void QueryList::readFields(const Scheme &scheme, const mem::Set<const Field *> &
 
 void QueryList::Item::readFields(const FieldCallback &cb, bool isSimpleGet) const {
 	QueryList::readFields(*scheme, getQueryFields(), cb, isSimpleGet);
-}
+}*/
 
 QueryList::QueryList(const Scheme *scheme) {
 	queries.reserve(4);

@@ -45,7 +45,6 @@ THE SOFTWARE.
 #include "STSqlHandleObject.cc"
 #include "STSqlHandleProp.cc"
 #include "STSqlQuery.cc"
-#include "STSqlResult.cc"
 
 #include "STPqHandle.cc"
 #include "STPqHandleInit.cc"

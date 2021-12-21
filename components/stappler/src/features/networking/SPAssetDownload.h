@@ -47,8 +47,8 @@ public:
 	virtual void notifyOnStarted() override;
 	virtual void notifyOnProgress(float progress) override;
 	virtual void notifyOnComplete(bool success) override;
-protected:
 
+protected:
 	bool executeLoop();
 
 	Rc<Asset> _asset;

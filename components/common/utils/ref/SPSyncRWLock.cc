@@ -23,10 +23,9 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 **/
 
-#include "SPDefine.h"
 #include "SPSyncRWLock.h"
 
-NS_SP_BEGIN
+namespace stappler {
 
 bool SyncRWLock::tryReadLock(LockPtr ptr, const Vector<SyncRWLock *> &vec) {
 	Vector<SyncRWLock *> locked; locked.reserve(vec.size());
@@ -202,4 +201,4 @@ void SyncRWLock::onLocked(Lock l) {
 	setDirty(Subscription::Flag(l));
 }
 
-NS_SP_END
+}

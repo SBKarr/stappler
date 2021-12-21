@@ -68,23 +68,8 @@ mem::Vector<int64_t> Adapter::performQueryListForIds(const QueryList &ql, size_t
 mem::Value Adapter::performQueryList(const QueryList &ql, size_t count, bool forUpdate) const {
 	auto targetScheme = ql.getScheme();
 	if (targetScheme) {
-		auto fields = Worker::getRequiredVirtualFields(*targetScheme, ql.getTopQuery());
-		auto ret = _interface->performQueryList(ql, count, forUpdate);
-		if (ret && targetScheme->hasVirtuals()) {
-			for (auto &retIt : ret.asArray()) {
-				if (!fields.empty()) {
-					for (auto &it : fields) {
-						auto slot = it->getSlot<FieldVirtual>();
-						if (slot->readFn) {
-							if (auto v = slot->readFn(*targetScheme, retIt)) {
-								retIt.setValue(std::move(v), it->getName());
-							}
-						}
-					}
-				}
-			}
-		}
-		return ret;
+		// virtual fields should be resolved within interface
+		return _interface->performQueryList(ql, count, forUpdate);
 	}
 	return mem::Value();
 }
@@ -128,6 +113,10 @@ int64_t Adapter::getDeltaValue(const Scheme &s, const FieldView &v, uint64_t id)
 	return _interface->getDeltaValue(s, v, id);
 }
 
+bool Adapter::select(Worker &w, const Query &q, const mem::Callback<void(Result &)> &cb) const {
+	return _interface->select(w, q, cb);
+}
+
 mem::Value Adapter::select(Worker &w, const Query &q) const {
 	auto targetScheme = &w.scheme();
 	auto ordField = q.getQueryField();
@@ -139,28 +128,8 @@ mem::Value Adapter::select(Worker &w, const Query &q) const {
 		}
 	}
 
-	if (targetScheme) {
-		UpdateFlags flags = UpdateFlags::None;
-		if (w.shouldIncludeAll()) { flags |= UpdateFlags::GetAll; }
-		auto fields = w.getRequiredVirtualFields(*targetScheme, q, flags);
-		auto ret = _interface->select(w, q);
-		if (ret && targetScheme->hasVirtuals()) {
-			for (auto &retIt : ret.asArray()) {
-				if (!fields.empty()) {
-					for (auto &it : fields) {
-						auto slot = it->getSlot<FieldVirtual>();
-						if (slot->readFn) {
-							if (auto v = slot->readFn(*targetScheme, retIt)) {
-								retIt.setValue(std::move(v), it->getName());
-							}
-						}
-					}
-				}
-			}
-		}
-		return ret;
-	}
-	return mem::Value();
+	// virtual fields should be resolved within interface
+	return _interface->select(w, q);
 }
 
 mem::Value Adapter::create(Worker &w, mem::Value &d) const {
@@ -204,19 +173,33 @@ mem::Value Adapter::save(Worker &w, uint64_t oid, const mem::Value &obj, const m
 	bool hasNonVirtualUpdates = false;
 	mem::Map<const FieldVirtual *, mem::Value> virtualWrites;
 	auto &dict = obj.asDict();
-	auto it = dict.begin();
-	while (it != dict.end()) {
-		if (auto f = w.scheme().getField(it->first)) {
-			if (std::find(fields.begin(), fields.end(), f->getName()) != fields.end()) {
-				if (f->getType() == Type::Virtual) {
-					virtualWrites.emplace(f->getSlot<FieldVirtual>(), it->second);
-				} else {
+
+	for (auto &it : fields) {
+		if (dict.find(it) == dict.end()) {
+			if (auto f = w.scheme().getField(it)) {
+				if (f->getType() != Type::Virtual) {
 					hasNonVirtualUpdates = true;
 				}
 			}
 		}
-		++ it;
 	}
+
+	if (!hasNonVirtualUpdates) {
+		auto it = dict.begin();
+		while (it != dict.end()) {
+			if (auto f = w.scheme().getField(it->first)) {
+				if (std::find(fields.begin(), fields.end(), f->getName()) != fields.end()) {
+					if (f->getType() == Type::Virtual) {
+						virtualWrites.emplace(f->getSlot<FieldVirtual>(), it->second);
+					} else {
+						hasNonVirtualUpdates = true;
+					}
+				}
+			}
+			++ it;
+		}
+	}
+
 	mem::Value ret;
 	if (hasNonVirtualUpdates) {
 		ret = _interface->save(w, oid, obj, fields);
@@ -487,6 +470,284 @@ void Binder::writeBind(mem::StringStream &query, const mem::Vector<mem::StringVi
 
 void Binder::clear() {
 	_iface->clear();
+}
+
+ResultRow::ResultRow(const ResultCursor *res, size_t r) : result(res), row(r) { }
+
+ResultRow::ResultRow(const ResultRow & other) noexcept : result(other.result), row(other.row) { }
+ResultRow & ResultRow::operator=(const ResultRow &other) noexcept {
+	result = other.result;
+	row = other.row;
+	return *this;
+}
+
+size_t ResultRow::size() const {
+	return result->getFieldsCount();
+}
+mem::Value ResultRow::toData(const db::Scheme &scheme, const mem::Map<mem::String, db::Field> &viewFields,
+		const mem::Vector<const Field *> &virtuals) {
+	mem::Value row(mem::Value::Type::DICTIONARY);
+	row.asDict().reserve(result->getFieldsCount());
+	mem::Value *deltaPtr = nullptr;
+	for (size_t i = 0; i < result->getFieldsCount(); i++) {
+		auto n = result->getFieldName(i);
+		if (n == "__oid") {
+			if (!isNull(i)) {
+				row.setInteger(toInteger(i), n.str<mem::Interface>());
+			}
+		} else if (n == "__vid") {
+			auto val = isNull(i)?int64_t(0):toInteger(i);
+			row.setInteger(val, n.str<mem::Interface>());
+			if (deltaPtr && val == 0) {
+				deltaPtr->setString("delete", "action");
+			}
+		} else if (n == "__d_action") {
+			if (!deltaPtr) {
+				deltaPtr = &row.emplace("__delta");
+			}
+			switch (DeltaAction(toInteger(i))) {
+			case DeltaAction::Create: deltaPtr->setString("create", "action"); break;
+			case DeltaAction::Update: deltaPtr->setString("update", "action"); break;
+			case DeltaAction::Delete: deltaPtr->setString("delete", "action"); break;
+			case DeltaAction::Append: deltaPtr->setString("append", "action"); break;
+			case DeltaAction::Erase: deltaPtr->setString("erase", "action");  break;
+			default: break;
+			}
+		} else if (n == "__d_object") {
+			row.setInteger(toInteger(i), "__oid");
+		} else if (n == "__d_time") {
+			if (!deltaPtr) {
+				deltaPtr = &row.emplace("__delta");
+			}
+			deltaPtr->setInteger(toInteger(i), "time");
+		} else if (n.starts_with("__ts_rank_")) {
+			auto d = toDouble(i);
+			row.setDouble(d, n.sub("__ts_rank_"_len).str<mem::Interface>());
+			row.setDouble(d, n.str<mem::Interface>());
+		} else if (!isNull(i)) {
+			if (auto f_it = scheme.getField(n)) {
+				row.setValue(toData(i, *f_it), n.str<mem::Interface>());
+			} else {
+				auto ef_it = viewFields.find(n);
+				if (ef_it != viewFields.end()) {
+					row.setValue(toData(i, ef_it->second), n.str<mem::Interface>());
+				}
+			}
+		}
+	}
+
+	if (!virtuals.empty()) {
+		for (auto &it : virtuals) {
+			auto slot = it->getSlot<FieldVirtual>();
+			if (slot->readFn) {
+				if (auto v = slot->readFn(scheme, row)) {
+					row.setValue(std::move(v), it->getName());
+				}
+			}
+		}
+	}
+
+	return row;
+}
+
+mem::StringView ResultRow::front() const {
+	return at(0);
+}
+mem::StringView ResultRow::back() const {
+	return at(result->getFieldsCount() - 1);
+}
+
+bool ResultRow::isNull(size_t n) const {
+	return result->isNull(n);
+}
+
+mem::StringView ResultRow::at(size_t n) const {
+	return result->toString(n);
+}
+
+mem::StringView ResultRow::toString(size_t n) const {
+	return result->toString(n);
+}
+mem::BytesView ResultRow::toBytes(size_t n) const {
+	return result->toBytes(n);
+}
+
+int64_t ResultRow::toInteger(size_t n) const {
+	return result->toInteger(n);
+}
+
+double ResultRow::toDouble(size_t n) const {
+	return result->toDouble(n);
+}
+
+bool ResultRow::toBool(size_t n) const {
+	return result->toBool(n);
+}
+
+mem::Value ResultRow::toTypedData(size_t n) const {
+	return result->toTypedData(n);
+}
+
+mem::Value ResultRow::toData(size_t n, const db::Field &f) {
+	switch(f.getType()) {
+	case db::Type::Integer:
+	case db::Type::Object:
+	case db::Type::Set:
+	case db::Type::Array:
+	case db::Type::File:
+	case db::Type::Image:
+		return mem::Value(toInteger(n));
+		break;
+	case db::Type::Float:
+		return mem::Value(toDouble(n));
+		break;
+	case db::Type::Boolean:
+		return mem::Value(toBool(n));
+		break;
+	case db::Type::Text:
+		return mem::Value(toString(n));
+		break;
+	case db::Type::Bytes:
+		return mem::Value(toBytes(n));
+		break;
+	case db::Type::Data:
+	case db::Type::Extra:
+		return stappler::data::read<mem::BytesView, mem::Interface>(toBytes(n));
+		break;
+	case db::Type::Custom:
+		return f.getSlot<db::FieldCustom>()->readFromStorage(*result, n);
+		break;
+	default:
+		break;
+	}
+
+	return mem::Value();
+}
+
+Result::Result(db::ResultCursor *iface) : _cursor(iface) {
+	_success = _cursor->isSuccess();
+	if (_success) {
+		_nfields = _cursor->getFieldsCount();
+	}
+}
+Result::~Result() {
+	clear();
+}
+
+Result::Result(Result &&res) : _cursor(res._cursor), _success(res._success), _nfields(res._nfields) {
+	res._cursor = nullptr;
+}
+Result & Result::operator=(Result &&res) {
+	clear();
+	_cursor = res._cursor;
+	_success = res._success;
+	_nfields = res._nfields;
+	res._cursor = nullptr;
+	return *this;
+}
+
+Result::operator bool () const {
+	return _success;
+}
+bool Result::success() const {
+	return _success;
+}
+
+mem::Value Result::info() const {
+	return _cursor->getInfo();
+}
+
+bool Result::empty() const {
+	return _cursor->isEmpty();
+}
+
+int64_t Result::readId() {
+	return _cursor->toId();
+}
+
+size_t Result::getAffectedRows() const {
+	return _cursor->getAffectedRows();
+}
+
+size_t Result::getRowsHint() const {
+	return _cursor->getRowsHint();
+}
+
+void Result::clear() {
+	if (_cursor) {
+		_cursor->clear();
+	}
+}
+
+Result::Iter Result::begin() {
+	if (_row != 0) {
+		_cursor->reset();
+		_row = 0;
+	}
+	if (_cursor->isEmpty()) {
+		return Result::Iter(this, stappler::maxOf<size_t>());
+	} else {
+		return Result::Iter(this, _row);
+	}
+}
+
+Result::Iter Result::end() {
+	return Result::Iter(this, stappler::maxOf<size_t>());
+}
+
+ResultRow Result::current() const {
+	return ResultRow(_cursor, _row);
+}
+
+bool Result::next() {
+	if (_cursor->next()) {
+		++ _row;
+		return true;
+	}
+	_row = stappler::maxOf<size_t>();
+	return false;
+}
+
+mem::StringView Result::name(size_t n) const {
+	return _cursor->getFieldName(n);
+}
+
+mem::Value Result::decode(const db::Scheme &scheme, const mem::Vector<const Field *> &virtuals) {
+	mem::Value ret(mem::Value::Type::ARRAY);
+	ret.asArray().reserve(getRowsHint());
+	for (auto it : *this) {
+		ret.addValue(it.toData(scheme, mem::Map<mem::String, db::Field>(), virtuals));
+	}
+	return ret;
+}
+mem::Value Result::decode(const db::Field &field, const mem::Vector<const Field *> &virtuals) {
+	mem::Value ret;
+	if (!empty()) {
+		if (field.getType() == db::Type::Array) {
+			auto &arrF = static_cast<const db::FieldArray *>(field.getSlot())->tfield;
+			for (auto it : *this) {
+				ret.addValue(it.toData(0, arrF));
+			}
+		} else if (field.getType() == db::Type::View) {
+			auto v = static_cast<const db::FieldView *>(field.getSlot());
+			for (auto it : *this) {
+				ret.addValue(it.toData(*v->scheme, mem::Map<mem::String, db::Field>(), virtuals));
+			}
+		} else {
+			for (auto it : *this) {
+				ret.addValue(it.toData(0, field));
+			}
+		}
+	}
+	return ret;
+}
+
+mem::Value Result::decode(const db::FieldView &field) {
+	mem::Value ret;
+	for (auto it : *this) {
+		ret.addValue(it.toData(*field.scheme, mem::Map<mem::String, db::Field>()));
+	}
+	return ret;
 }
 
 NS_DB_END

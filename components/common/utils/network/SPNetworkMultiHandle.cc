@@ -1,5 +1,5 @@
 /**
-Copyright (c) 2020 Roman Katuntsev <sbkarr@stappler.org>
+Copyright (c) 2020-2021 Roman Katuntsev <sbkarr@stappler.org>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -28,23 +28,6 @@ THE SOFTWARE.
 
 namespace stappler {
 
-struct NetworkHandle::Context {
-	void *userdata = nullptr;
-	CURL *curl = nullptr;
-	NetworkHandle *handle = nullptr;
-
-	curl_slist *headers = nullptr;
-	curl_slist *mailTo = nullptr;
-
-	FILE *inputFile = nullptr;
-	FILE *outputFile = nullptr;
-	size_t inputPos = 0;
-
-	bool success = false;
-
-	std::array<char, 256> errorBuffer = { 0 };
-};
-
 bool NetworkHandle::perform(const Callback<bool(CURL *)> &onBeforePerform, const Callback<bool(CURL *)> &onAfterPerform) {
 	_isRequestPerformed = false;
 	_errorCode = CURLE_OK;
@@ -61,8 +44,9 @@ bool NetworkHandle::perform(const Callback<bool(CURL *)> &onBeforePerform, const
 		return false;
 	}
 
-	auto ret = finalize(&ctx, onAfterPerform, curl_easy_perform(ctx.curl));
-	Network::releaseHandle(ctx.curl, _reuse, ctx.success);
+	ctx.code = curl_easy_perform(ctx.curl);
+	auto ret = finalize(&ctx, onAfterPerform);
+	Network::releaseHandle(ctx.curl, _reuse, ctx.code == CURLE_OK);
 	return ret;
 }
 
@@ -77,19 +61,23 @@ bool NetworkHandle::prepare(Context *ctx, const Callback<bool(CURL *)> &onBefore
 	ctx->handle = this;
 
 	bool check = true;
-	if (_shared) {
+	if (ctx->share) {
+		SetOpt(check, ctx->curl, CURLOPT_SHARE, _sharedHandle);
+	} else if (_shared) {
 		if (!_sharedHandle) {
 			_sharedHandle = curl_share_init();
-			curl_share_setopt(_sharedHandle, CURLSHOPT_SHARE, CURL_LOCK_DATA_COOKIE);
-			curl_share_setopt(_sharedHandle, CURLSHOPT_SHARE, CURL_LOCK_DATA_DNS);
-			curl_share_setopt(_sharedHandle, CURLSHOPT_SHARE, CURL_LOCK_DATA_SSL_SESSION);
-			curl_share_setopt(_sharedHandle, CURLSHOPT_SHARE, CURL_LOCK_DATA_CONNECT);
+			curl_share_setopt((CURLSH *)_sharedHandle, CURLSHOPT_SHARE, CURL_LOCK_DATA_COOKIE);
+			curl_share_setopt((CURLSH *)_sharedHandle, CURLSHOPT_SHARE, CURL_LOCK_DATA_DNS);
+			curl_share_setopt((CURLSH *)_sharedHandle, CURLSHOPT_SHARE, CURL_LOCK_DATA_SSL_SESSION);
+			curl_share_setopt((CURLSH *)_sharedHandle, CURLSHOPT_SHARE, CURL_LOCK_DATA_CONNECT);
 		}
 		SetOpt(check, ctx->curl, CURLOPT_COOKIEFILE, "/undefined");
 		SetOpt(check, ctx->curl, CURLOPT_SHARE, _sharedHandle);
+	} else {
+		SetOpt(check, ctx->curl, CURLOPT_SHARE, nullptr);
 	}
 
-	check = (check) ? setupCurl(ctx->curl, ctx->errorBuffer.data()) : false;
+	check = (check) ? setupCurl(ctx->curl, ctx->error.data()) : false;
 	check = (check) ? setupDebug(ctx->curl, _debug) : false;
 	check = (check) ? setupRootCert(ctx->curl, _rootCertFile) : false;
 	check = (check) ? setupHeaders(ctx->curl, _sendedHeaders, &ctx->headers, _user.empty() ? _keySign : StringView()) : false;
@@ -147,8 +135,8 @@ bool NetworkHandle::prepare(Context *ctx, const Callback<bool(CURL *)> &onBefore
 	return true;
 }
 
-bool NetworkHandle::finalize(Context *ctx, const Callback<bool(CURL *)> &onAfterPerform, long code) {
-	_errorCode = code;
+bool NetworkHandle::finalize(Context *ctx, const Callback<bool(CURL *)> &onAfterPerform) {
+	_errorCode = ctx->code;
 	if (ctx->headers) {
 		curl_slist_free_all(ctx->headers);
 		ctx->headers = nullptr;
@@ -215,9 +203,9 @@ bool NetworkHandle::finalize(Context *ctx, const Callback<bool(CURL *)> &onAfter
         }
 	} else {
 		if (!_silent) {
-			log::format("CURL", "fail to perform %s: (%ld) %s",  _url.c_str(), _errorCode, ctx->errorBuffer.data());
+			log::format("CURL", "fail to perform %s: (%ld) %s",  _url.c_str(), _errorCode, ctx->error.data());
 		}
-		_error = ctx->errorBuffer.data();
+		_error = ctx->error.data();
 		ctx->success = false;
     }
 
@@ -266,7 +254,8 @@ bool NetworkMultiHandle::perform(const Callback<bool(NetworkHandle *, void *)> &
 	auto cancel = [&] {
 		for (auto &it : handles) {
 			curl_multi_remove_handle(m, it.first);
-			it.second.handle->finalize(&it.second, nullptr, CURLE_FAILED_INIT);
+			it.second.code = CURLE_FAILED_INIT;
+			it.second.handle->finalize(&it.second, nullptr);
 
 			-- s_activeHandles;
 			curl_easy_cleanup(it.first);
@@ -302,7 +291,8 @@ bool NetworkMultiHandle::perform(const Callback<bool(NetworkHandle *, void *)> &
 
 				auto it = handles.find(e);
 				if (it != handles.end()) {
-					it->second.handle->finalize(&it->second, nullptr, msg->data.result);
+					it->second.code = msg->data.result;
+					it->second.handle->finalize(&it->second, nullptr);
 					if (cb) {
 						if (!cb(it->second.handle, it->second.userdata)) {
 							handles.erase(it);

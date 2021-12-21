@@ -665,14 +665,16 @@ void setPoolInfo(pool_t *pool, uint32_t tag, const void *ptr) {
 }
 
 static status_t cleanup_register_fn(void *ptr) {
-	if (auto fn = (Function<void()> *)ptr) {
+	if (auto fn = (memory::function<void()> *)ptr) {
 		(*fn)();
 	}
 	return 0;
 }
 
 void cleanup_register(pool_t *p, memory::function<void()> &&cb) {
+	pool::push(p);
 	auto fn = new (p) memory::function<void()>(move(cb));
+	pool::pop();
 	pool::cleanup_register(p, fn, &cleanup_register_fn);
 }
 

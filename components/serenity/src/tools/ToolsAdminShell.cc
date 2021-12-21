@@ -1044,9 +1044,14 @@ bool ShellSocketHandler::onCommand(StringView &r) {
 	for (auto &it : _external) {
 		for (auto &eit : *it.second) {
 			if (cmd == eit.second.name) {
-				return eit.second.callback(r, [&] (const mem::Value &val) {
-					send(val);
+				bool ret = false;
+				performWithStorage([&] (const db::Transaction &t) {
+					t.setRole(db::AccessRoleId::Admin);
+					ret = eit.second.callback(r, [&] (const mem::Value &val) {
+						send(val);
+					});
 				});
+				return ret;
 			}
 		}
 	}

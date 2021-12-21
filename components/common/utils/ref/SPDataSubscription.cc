@@ -1,8 +1,5 @@
-// This is an open source non-commercial project. Dear PVS-Studio, please check it.
-// PVS-Studio Static Code Analyzer for C, C++ and C#: http://www.viva64.com
-
 /**
-Copyright (c) 2016-2017 Roman Katuntsev <sbkarr@stappler.org>
+Copyright (c) 2016-2021 Roman Katuntsev <sbkarr@stappler.org>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -23,10 +20,9 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 **/
 
-#include "SPLayout.h"
-#include "SLSubscription.h"
+#include "SPDataSubscription.h"
 
-NS_LAYOUT_BEGIN
+namespace stappler::data {
 
 Subscription::Flags Subscription::Initial(1);
 
@@ -127,4 +123,4 @@ void Subscription::setForwardedSubscription(Subscription *sub) {
 	}
 }
 
-NS_LAYOUT_END
+}

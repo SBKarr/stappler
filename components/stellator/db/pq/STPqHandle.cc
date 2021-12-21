@@ -394,7 +394,7 @@ Handle::Handle(const Driver *d, Driver::Handle h) : driver(d), handle(h) {
 		if (c.get()) {
 			conn = c;
 
-			performSimpleSelect("SELECT current_database();", [&] (db::sql::Result &qResult) {
+			performSimpleSelect("SELECT current_database();", [&] (db::Result &qResult) {
 				if (!qResult.empty()) {
 					dbName = qResult.current().toString(0).pdup();
 				}

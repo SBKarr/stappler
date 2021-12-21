@@ -117,10 +117,7 @@ public:
 		QueryFieldResolver fields;
 
 		const mem::Set<const Field *> &getQueryFields() const;
-		void readFields(const FieldCallback &, bool isSimpleGet = false) const;
 	};
-
-	static void readFields(const Scheme &, const mem::Set<const Field *> &, const FieldCallback &, bool isSimpleGet = false);
 
 public:
 	QueryList(const Scheme *);

@@ -40,7 +40,6 @@ THE SOFTWARE.
 #include "SLMat4.cc"
 #include "SLMathUtil.cc"
 #include "SLQuaternion.cc"
-#include "SLSubscription.cc"
 #include "SLVec2.cc"
 #include "SLVec3.cc"
 #include "SLVec4.cc"

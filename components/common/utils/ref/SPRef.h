@@ -20,8 +20,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 **/
 
-#ifndef COMMON_UTILS_SPREF_H_
-#define COMMON_UTILS_SPREF_H_
+#ifndef COMMON_UTILS_REF_SPREF_H_
+#define COMMON_UTILS_REF_SPREF_H_
 
 #include "SPTime.h"
 #include "SPCommon.h"
@@ -284,4 +284,4 @@ void RefBase<Counter, Interface>::foreachBacktrace(const Function<void(uint64_t,
 
 NS_SP_END
 
-#endif /* COMMON_UTILS_SPREF_H_ */
+#endif /* COMMON_UTILS_REF_SPREF_H_ */

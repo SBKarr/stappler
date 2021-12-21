@@ -27,6 +27,8 @@ THE SOFTWARE.
 
 NS_DB_SQL_BEGIN
 
+using Result = db::Result;
+
 class SqlHandle : public db::Interface {
 public:
 	using Scheme = db::Scheme;
@@ -35,14 +37,6 @@ public:
 	using Operator = stappler::sql::Operator;
 	using Comparation = stappler::sql::Comparation;
 	using QueryList = db::QueryList;
-
-	enum class DeltaAction {
-		Create = 1,
-		Update,
-		Delete,
-		Append,
-		Erase
-	};
 
 	static mem::StringView getKeyValueSchemeName();
 	static mem::String getNameForDelta(const Scheme &scheme);
@@ -64,25 +58,32 @@ public:
 	virtual int64_t getDeltaValue(const Scheme &scheme) override;
 	virtual int64_t getDeltaValue(const Scheme &scheme, const db::FieldView &view, uint64_t tag) override;
 
+	// get change history for scheme that supports delta ops
 	mem::Value getHistory(const Scheme &, const stappler::Time &, bool resolveUsers = false);
+
+	// get change history for view field in object
 	mem::Value getHistory(const db::FieldView &, const Scheme *, uint64_t tag, const stappler::Time &, bool resolveUsers = false);
 
+	// get changed objects in scheme from timestamp
 	mem::Value getDeltaData(const Scheme &, const stappler::Time &);
+
+	// get changed objects from view field in object from timestamp
 	mem::Value getDeltaData(const Scheme &, const db::FieldView &, const stappler::Time &, uint64_t);
 
 public: // interface
 	virtual void makeQuery(const stappler::Callback<void(SqlQuery &)> &cb) = 0;
 
-	virtual bool selectQuery(const SqlQuery &, const stappler::Callback<void(Result &)> &cb,
+	virtual bool selectQuery(const SqlQuery &, const mem::Callback<void(Result &)> &cb,
 			const mem::Callback<void(const mem::Value &)> &err = nullptr) = 0;
 	virtual bool performSimpleQuery(const mem::StringView &,
 			const mem::Callback<void(const mem::Value &)> &err = nullptr) = 0;
-	virtual bool performSimpleSelect(const mem::StringView &, const stappler::Callback<void(Result &)> &cb,
+	virtual bool performSimpleSelect(const mem::StringView &, const mem::Callback<void(Result &)> &cb,
 			const mem::Callback<void(const mem::Value &)> &err = nullptr) = 0;
 
 	virtual bool isSuccess() const = 0;
 
 public:
+	virtual bool select(Worker &, const Query &, const mem::Callback<void(Result &)> &) override;
 	virtual mem::Value select(Worker &, const db::Query &) override;
 
 	virtual mem::Value create(Worker &, mem::Value &) override;
@@ -109,9 +110,9 @@ protected:
 	int64_t selectQueryId(const SqlQuery &);
 	size_t performQuery(const SqlQuery &);
 
-	mem::Value selectValueQuery(const Scheme &, const SqlQuery &);
-	mem::Value selectValueQuery(const Field &, const SqlQuery &);
-	void selectValueQuery(mem::Value &, const Field &, const SqlQuery &);
+	mem::Value selectValueQuery(const Scheme &, const SqlQuery &, const mem::Vector<const Field *> &virtuals);
+	mem::Value selectValueQuery(const Field &, const SqlQuery &, const mem::Vector<const Field *> &virtuals);
+	void selectValueQuery(mem::Value &, const FieldView &, const SqlQuery &);
 
 protected:
 	mem::Value getFileField(Worker &w, SqlQuery &query, uint64_t oid, uint64_t targetId, const Field &f);

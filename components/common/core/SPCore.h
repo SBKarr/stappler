@@ -25,7 +25,9 @@ THE SOFTWARE.
 
 /* Stappler Common library
  *
- * this file should be included as first
+ * this file should be included before any other files to enable
+ * precompiled-header compilation optimization
+ * (if no other specific precompiled header needed)
  *
  * SPAPR or SPDEFAULT defines base toolkit for library
  * If SPAPR defined, Apache Portable Runtime library will be used
@@ -33,10 +35,7 @@ THE SOFTWARE.
  *
  * Some header-only STL features (like std::numeric_limits) will be
  * used in both cases
- *
- *
  */
-
 
 #ifndef SPAPR
 #ifndef SPDEFAULT
@@ -394,6 +393,10 @@ StringToNumber<double>(const char *ptr, char ** tail, int base) -> double {
 	return 0.0;
 }
 
+/** SP_DEFINE_ENUM_AS_MASK is utility to make a bitwise-mask from typed enum
+ * It defines a set of overloaded operators, that allow some bitwise operations
+ * on this enum class
+ */
 #define SP_DEFINE_ENUM_AS_MASK(Type) \
 	constexpr inline Type operator | (const Type &l, const Type &r) { return Type(stappler::toInt(l) | stappler::toInt(r)); } \
 	constexpr inline Type operator & (const Type &l, const Type &r) { return Type(stappler::toInt(l) & stappler::toInt(r)); } \
@@ -407,10 +410,26 @@ StringToNumber<double>(const char *ptr, char ** tail, int base) -> double {
 	constexpr inline bool operator != (const std::underlying_type<Type>::type &l, const Type &r) { return l != stappler::toInt(r); } \
 	constexpr inline Type operator~(const Type &t) { return Type(~stappler::toInt(t)); }
 
-/*
- *   Value wrapper
- */
 
+/** Value wrapper is a syntactic sugar struct, that allow you to create
+ * an alias type for some other type, that will be statically and uniquely
+ * different from all other types
+ *
+ * Most common usage is type-based overload resolution, like
+ *
+ * using FilePath = ValueWrapper<StringView, class FilePathFlag>;
+ * using DataString =  ValueWrapper<StringView, class DataStringFlag>;
+ *
+ * ...
+ *
+ * class SomeClass {
+ * 	SomeClass(FilePath); // init with data from file
+ * 	SomeClass(DataString); // init with data from memory
+ * };
+ *
+ * Also, ValueWrapper used in implementation of function with named arguments
+ * and function, that requires additional type-checking
+ */
 template <class T, class Flag>
 struct ValueWrapper {
 	using Type = T;
@@ -468,6 +487,13 @@ struct ValueWrapper {
 	T value;
 };
 
+/** Result is a helper class for functions, that returns some result
+ * or fails and returns nothing. It defines several mechanisms to handle
+ * error state:
+ * - get with default value in case of failure (`get`)
+ * - grab value into object, provided by reference, if value is valid (`grab`)
+ * - call a callback with value, if it's valid (`unwrap`)
+ */
 template <typename T>
 struct Result {
 	enum Status {

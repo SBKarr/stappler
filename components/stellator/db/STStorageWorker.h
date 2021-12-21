@@ -112,8 +112,6 @@ public:
 		bool hasCondition() const { return (flags & Conflict::WithoutCondition) == Conflict::None; }
 	};
 
-	static mem::Vector<const Field *> getRequiredVirtualFields(const Scheme &, const Query &, UpdateFlags = UpdateFlags::None);
-
 	Worker(const Scheme &);
 	Worker(const Scheme &, const Adapter &);
 	Worker(const Scheme &, const Transaction &);
@@ -140,9 +138,6 @@ public:
 	Worker& exclude(T && t) { _required.exclude(std::forward<T>(t)); return *this; }
 
 	void clearRequiredFields();
-
-	bool readFields(const Scheme &, const FieldCallback &, const mem::Value &patchFields = mem::Value());
-	void readFields(const Scheme &, const Query &, const FieldCallback &);
 
 	bool shouldIncludeNone() const;
 	bool shouldIncludeAll() const;
@@ -174,6 +169,10 @@ public:
 	mem::Value get(uint64_t oid, std::initializer_list<const Field *> &&fields, UpdateFlags = UpdateFlags::None);
 	mem::Value get(const mem::StringView &alias, std::initializer_list<const Field *> &&fields, UpdateFlags = UpdateFlags::None);
 	mem::Value get(const mem::Value &id, std::initializer_list<const Field *> &&fields, UpdateFlags = UpdateFlags::None);
+
+	mem::Value get(uint64_t oid, mem::SpanView<const Field *> fields, UpdateFlags = UpdateFlags::None);
+	mem::Value get(const mem::StringView &alias, mem::SpanView<const Field *> fields, UpdateFlags = UpdateFlags::None);
+	mem::Value get(const mem::Value &id, mem::SpanView<const Field *> fields, UpdateFlags = UpdateFlags::None);
 
 	// returns Array with zero or more Dictionaries with object data or Null value
 	mem::Value select(const Query &, UpdateFlags = UpdateFlags::None);
@@ -271,6 +270,31 @@ protected:
 	const Scheme *_scheme = nullptr;
 	Transaction _transaction;
 	bool _isSystem = false;
+};
+
+struct FieldResolver {
+	FieldResolver(const Scheme &scheme, const Worker &w, const Query &q);
+	FieldResolver(const Scheme &scheme, const Worker &w);
+	FieldResolver(const Scheme &scheme, const Query &q);
+	FieldResolver(const Scheme &scheme, const Query &q, const mem::Set<const Field *> &);
+	FieldResolver(const Scheme &scheme);
+	FieldResolver(const Scheme &scheme, const mem::Set<const Field *> &);
+
+	bool shouldResolveFields() const;
+	bool hasIncludesOrExcludes() const;
+	bool shouldIncludeAll() const;
+	bool shouldIncludeField(const Field &f) const;
+	bool shouldExcludeField(const Field &f) const;
+	bool isFieldRequired(const Field &f) const;
+	mem::Vector<const Field *> getVirtuals() const;
+	bool readFields(const Worker::FieldCallback &cb, bool isSimpleGet = false);
+
+	void include(mem::StringView);
+
+	const Scheme *scheme = nullptr;
+	const Worker::RequiredFields *required = nullptr;
+	const Query *query = nullptr;
+	mem::Vector<const Field *> requiredFields;
 };
 
 template <typename Callback>

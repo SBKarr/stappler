@@ -301,7 +301,7 @@ void Driver::setUserId(Handle h, int64_t userId) const {
 	db->userId = userId;
 }
 
-Driver::Driver(mem::StringView mem) { }
+Driver::Driver(mem::StringView mem) { _driverPath = mem.pdup(); }
 
 bool ResultCursor::statusIsSuccess(int x) {
 	return (x == SQLITE_DONE) || (x == SQLITE_ROW) || (x == SQLITE_OK);

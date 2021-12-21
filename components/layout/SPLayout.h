@@ -32,6 +32,7 @@ THE SOFTWARE.
 #include "SPRef.h"
 #include "SPCommon.h"
 #include "SPMultipartParser.h"
+#include "SPDataSubscription.h"
 
 #ifdef __cplusplus
 
@@ -69,11 +70,12 @@ THE SOFTWARE.
 		LAYOUT_COLOR_SPEC_BASE(Name) \
 		LAYOUT_COLOR_SPEC_ACCENT(Name)
 
-NS_LAYOUT_BEGIN
+namespace stappler::layout {
 
 constexpr uint32_t EngineVersion() { return 3; }
 
 using Ref = stappler::Ref;
+using Subscription = stappler::data::Subscription;
 
 class Formatter;
 class Document;
@@ -108,7 +110,7 @@ struct Size2;
 struct Size3;
 struct Rect;
 
-NS_LAYOUT_END
+}
 
 #include "SPLog.h"
 #include "SPTime.h"
@@ -125,6 +127,5 @@ NS_LAYOUT_END
 #include "SLPadding.h"
 #include "SLMovingAverage.h"
 #include "SLStyle.h"
-#include "SLSubscription.h"
 
 #endif /* LAYOUT_SPLAYOUT_H_ */

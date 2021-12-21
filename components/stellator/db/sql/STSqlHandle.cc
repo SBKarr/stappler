@@ -110,7 +110,7 @@ db::User * SqlHandle::authorizeUser(const db::Auth &auth, const mem::StringView 
 				return;
 			}
 
-			auto dv = res.decode(auth.getScheme());
+			auto dv = res.decode(auth.getScheme(), mem::Vector<const Field *>());
 			if (dv.size() == 1) {
 				ud = std::move(dv.getValue(0));
 			}
@@ -340,22 +340,6 @@ static void Handle_mergeViews(mem::Value &objs, mem::Value &vals) {
 	}
 }
 
-static void Handle_writeSelectViewDataQuery(SqlQuery &q, const db::Scheme &s, uint64_t oid, const db::Field &f, const mem::Value &data) {
-	auto fs = f.getForeignScheme();
-
-	auto fieldName = mem::toString(fs->getName(), "_id");
-	auto sel = q.select(SqlQuery::Field(fieldName).as("__oid")).field("__vid");
-
-	sel.from(mem::toString(s.getName(), "_f_", f.getName(), "_view"))
-		.where(mem::toString(s.getName(), "_id"), db::Comparation::Equal, oid)
-		.parenthesis(db::Operator::And, [&] (SqlQuery::WhereBegin &w) {
-			auto subw = w.where();
-			for (auto &it : data.asArray()) {
-				subw.where(db::Operator::Or, fieldName, db::Comparation::Equal, it.getInteger("__oid"));
-			}
-	}).order(db::Ordering::Ascending, SqlQuery::Field(fieldName)).finalize();
-}
-
 int64_t SqlHandle::getDeltaValue(const Scheme &scheme) {
 	if (scheme.hasDelta()) {
 		int64_t ret = 0;
@@ -481,12 +465,29 @@ mem::Value SqlHandle::getDeltaData(const Scheme &scheme, const stappler::Time &t
 	mem::Value ret;
 	if (scheme.hasDelta()) {
 		makeQuery([&] (SqlQuery &q) {
+			FieldResolver resv(scheme);
 			q.writeQueryDelta(scheme, time, mem::Set<const Field *>(), false);
 			q.finalize();
-			ret = selectValueQuery(scheme, q);
+			ret = selectValueQuery(scheme, q, resv.getVirtuals());
 		});
 	}
 	return ret;
+}
+
+static void Handle_writeSelectViewDataQuery(SqlQuery &q, const db::Scheme &s, uint64_t oid, const db::FieldView &f, const mem::Value &data) {
+	auto fs = f.scheme;
+
+	auto fieldName = mem::toString(fs->getName(), "_id");
+	auto sel = q.select(SqlQuery::Field(fieldName).as("__oid")).field("__vid");
+
+	sel.from(mem::toString(s.getName(), "_f_", f.getName(), "_view"))
+		.where(mem::toString(s.getName(), "_id"), db::Comparation::Equal, oid)
+		.parenthesis(db::Operator::And, [&] (SqlQuery::WhereBegin &w) {
+			auto subw = w.where();
+			for (auto &it : data.asArray()) {
+				subw.where(db::Operator::Or, fieldName, db::Comparation::Equal, it.getInteger("__oid"));
+			}
+	}).order(db::Ordering::Ascending, SqlQuery::Field(fieldName)).finalize();
 }
 
 mem::Value SqlHandle::getDeltaData(const Scheme &scheme, const db::FieldView &view, const stappler::Time &time, uint64_t tag) {
@@ -498,13 +499,15 @@ mem::Value SqlHandle::getDeltaData(const Scheme &scheme, const db::FieldView &vi
 			list.selectById(&scheme, tag);
 			list.setField(view.scheme, &field);
 
+			FieldResolver resv(scheme);
+
 			q.writeQueryViewDelta(list, time, mem::Set<const Field *>(), false);
-			auto r = selectValueQuery(*view.scheme, q);
+			auto r = selectValueQuery(*view.scheme, q, resv.getVirtuals());
 			if (r.isArray() && r.size() > 0) {
 				q.clear();
 				Field f(&view);
-				Handle_writeSelectViewDataQuery(q, scheme, tag, f, r);
-				selectValueQuery(r, f, q);
+				Handle_writeSelectViewDataQuery(q, scheme, tag, view, r);
+				selectValueQuery(r, view, q);
 				ret = std::move(r);
 			}
 		});
@@ -538,27 +541,27 @@ size_t SqlHandle::performQuery(const SqlQuery &query) {
 	return ret;
 }
 
-mem::Value SqlHandle::selectValueQuery(const Scheme &scheme, const SqlQuery &query) {
+mem::Value SqlHandle::selectValueQuery(const Scheme &scheme, const SqlQuery &query, const mem::Vector<const Field *> &virtuals) {
 	mem::Value ret;
 	selectQuery(query, [&] (Result &result) {
 		if (result) {
-			ret = result.decode(scheme);
+			ret = result.decode(scheme, virtuals);
 		}
 	});
 	return ret;
 }
 
-mem::Value SqlHandle::selectValueQuery(const Field &field, const SqlQuery &query) {
+mem::Value SqlHandle::selectValueQuery(const Field &field, const SqlQuery &query, const mem::Vector<const Field *> &virtuals) {
 	mem::Value ret;
 	selectQuery(query, [&] (Result &result) {
 		if (result) {
-			ret = result.decode(field);
+			ret = result.decode(field, virtuals);
 		}
 	});
 	return ret;
 }
 
-void SqlHandle::selectValueQuery(mem::Value &objs, const Field &field, const SqlQuery &query) {
+void SqlHandle::selectValueQuery(mem::Value &objs, const FieldView &field, const SqlQuery &query) {
 	selectQuery(query, [&] (Result &result) {
 		if (result) {
 			auto vals = result.decode(field);
