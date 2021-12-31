@@ -909,6 +909,8 @@ static void Context_printAttrVar(const StringView &name, const Var &var, std::os
 			out << ";";
 		}
 		out << "\"";
+	} else if (val.isNull()) {
+		// do nothing
 	} else {
 		out << " " << name << "=\"";
 		ContextFn_printVar(var, out, escapeOutput);

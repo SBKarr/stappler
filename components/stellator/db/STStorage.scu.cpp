@@ -56,3 +56,4 @@ THE SOFTWARE.
 
 #include "STFieldIntArray.cc"
 #include "STFieldPoint.cc"
+#include "STFieldTextArray.cc"

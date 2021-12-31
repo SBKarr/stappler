@@ -30,6 +30,24 @@ NS_SA_EXT_BEGIN(tools)
 int ErrorsGui::onTranslateName(Request &req) {
 	req.getResponseHeaders().emplace("WWW-Authenticate", req.server().getServerHostname());
 
+	auto t = db::Transaction::acquire(req.storage());
+	if (!t) {
+		return HTTP_INTERNAL_SERVER_ERROR;
+	}
+
+	if (_subPath == "/fixTags") {
+		auto errorScheme = req.server().getErrorScheme();
+		auto tags = errorScheme->getField("tags");
+		auto errors = errorScheme->select(t, db::Query().include("data"));
+		for (auto &it : errors.asArray()) {
+			auto objTags = tags->getDefault(it);
+			errorScheme->update(t, it, data::Value({
+				pair("tags", data::Value(objTags))
+			}), db::UpdateFlags::NoReturn);
+		}
+		return HTTP_OK;
+	}
+
 	auto u = req.getAuthorizedUser();
 	if (u && u->isAdmin()) {
 		auto errorScheme = req.server().getErrorScheme();
@@ -46,32 +64,72 @@ int ErrorsGui::onTranslateName(Request &req) {
 			}
 
 			auto c = d.getString("c");
+			auto tag = d.getString("tag");
+
+			StringStream url;
+			url << req.getUri();
+
 			if (!c.empty()) {
 				auto token = ContinueToken(d.getString("c"));
 				if (auto t = db::Transaction::acquire(req.storage())) {
 					db::Query q;
+					if (!tag.empty()) {
+						q.select("tags", db::Comparation::Includes, data::Value(tag));
+					}
 					token.refresh(*errorScheme, t, q);
 
-					return req.redirectTo(toString(req.getUri(), "?c=", token.encode()));
+					url << "?c=" << token.encode();
 				} else {
-					return req.redirectTo(toString(req.getUri(), "?c=", c));
+					url << "?c=" << c;
 				}
-			} else {
-				return req.redirectTo(String(req.getUri()));
 			}
+			if (!tag.empty()) {
+				if (c.empty()) {
+					url << "?tag=" << tag;
+				} else {
+					url << "&tag=" << tag;
+				}
+			}
+			return req.redirectTo(url.str());
+		}
+
+		String selectedTag;
+		if (d.isString("tag")) {
+			selectedTag = d.getString("tag");
 		}
 
 		data::Value errorsData;
 		auto token = d.isString("c") ? ContinueToken(d.getString("c")) : ContinueToken("__oid", 25, true);
-		if (auto t = db::Transaction::acquire(req.storage())) {
-			if (errorScheme) {
-				db::Query q;
-				errorsData = token.perform(*errorScheme, t, q);
+
+		if (errorScheme) {
+			db::Query q;
+			if (!selectedTag.empty()) {
+				q.select("tags", db::Comparation::Includes, data::Value(selectedTag));
 			}
+			errorsData = token.perform(*errorScheme, t, q);
 		}
 
 		req.runPug("virtual://html/errors.pug", [&] (pug::Context &exec, const pug::Template &tpl) -> bool {
 			ServerGui::defineBasics(exec, req, u);
+
+			if (!selectedTag.empty()) {
+				exec.set("selectedTag", data::Value(selectedTag));
+			}
+
+			if (auto iface = dynamic_cast<db::pq::Handle *>(t.getAdapter().interface())) {
+				data::Value ret;
+				auto query = toString("SELECT tag, COUNT(*) FROM (SELECT __oid, unnest(tags) as tag FROM ", errorScheme->getName(), ") s GROUP BY tag;");
+				iface->performSimpleSelect(query, [&] (db::Result &res) {
+					for (auto it : res) {
+						ret.addValue(data::Value({
+							pair("tag", data::Value(it.toString(0))),
+							pair("count", data::Value(it.toInteger(1))),
+							pair("selected", data::Value(it.toString(0) == selectedTag))
+						}));
+					}
+				});
+				exec.set("tags", move(ret));
+			}
 
 			if (errorsData.size() > 0) {
 				exec.set("errors", true, &errorsData);

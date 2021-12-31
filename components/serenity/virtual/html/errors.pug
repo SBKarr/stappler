@@ -1,5 +1,33 @@
 include virtual://html/header.pug
 
+mixin cursor(front=false)
+	p(id=front?"cursor":null)
+		if cursor.prev
+			- var prevUrl = window.location.pathname+"?c="+cursor.prev
+			if selectedTag
+				- prevUrl = prevUrl + "&tag=" + selectedTag
+			- prevUrl = prevUrl + "#cursor"
+			a.nav(href=prevUrl) Prev
+			|
+			|
+		span= cursor.start + " - " + cursor.end + " из " + cursor.total
+		if cursor.next
+			|
+			|
+			- var nextUrl = window.location.pathname+"?c="+cursor.next
+			if selectedTag
+				- nextUrl = nextUrl + "&tag=" + selectedTag
+			- nextUrl = nextUrl + "#cursor"
+			a.nav(href=nextUrl) Next
+
+mixin deleteLink(id)
+	- var link = "?delete="+id
+	if cursor.current
+		- link = link + "&c="+cursor.current
+	if selectedTag
+		- link = link + "&tag="+selectedTag
+	a.error(href=link) Remove
+
 doctype html
 head
 	title Serenity Errors Page
@@ -10,16 +38,14 @@ head
 .body
 	+header("Errors")
 	.main
-		p#cursor
-			if cursor.prev
-				a.nav(href=window.location.pathname+"?c="+cursor.prev+"#cursor") Prev
-				|
-				|
-			span= cursor.start + " - " + cursor.end + " из " + cursor.total
-			if cursor.next
-				|
-				|
-				a.nav(href=window.location.pathname+"?c="+cursor.next+"#cursor") Next
+		if tags
+			p#tags
+				each val in tags
+					|
+					|
+					a(href="?tag="+val.tag,class=val.selected?"selected":null)= "#" + val.tag + " (" + val.count + ")"
+
+		+cursor(true)
 
 		each val in errors
 			div.error_item
@@ -28,23 +54,22 @@ head
 						[#[span.time= "#" + val.__oid]] [#[span.time= serenity.timeToHttp(val.time)]] [#[span.ip= val.ip]] #[span.server= val.name] #[span.request= val.request]
 					|
 					|
-					a(href="?delete="+val.__oid+"&c="+cursor.current) Remove
+					+deleteLink(val.__oid)
+					|
+					|
+					if val.tags
+						span &nbsp;&nbsp;
+						each val in val.tags
+							|
+							|
+							a(href="?tag="+val)= "#" + val
 				.headers
 					each value, key in val.headers
 						p.code #[= key]: #[= value]
 				.data
 					pre: code.code= serenity.prettify(val.data)
-		
-		p
-			if cursor.prev
-				a.nav(href=window.location.pathname+"?c="+cursor.prev+"#cursor") Prev
-				|
-				|
-			span= cursor.start + " - " + cursor.end + " из " + cursor.total
-			if cursor.next
-				|
-				|
-				a.nav(href=window.location.pathname+"?c="+cursor.next+"#cursor") Next
-
 		else
 			p No errors found
+
+		+cursor
+			

@@ -500,6 +500,7 @@ public:
 	void writeBind(const StringView &func, const Field &f);
 
 	Stream &getStream();
+	Binder &getBinder();
 
 	StringView getTarget() const;
 
@@ -613,6 +614,11 @@ void Query<Binder, Interface>::writeBind(const StringView &func, const Field &f)
 template <typename Binder, typename Interface>
 auto Query<Binder, Interface>::getStream() -> typename Query<Binder, Interface>::Stream & {
 	return stream;
+}
+
+template <typename Binder, typename Interface>
+auto Query<Binder, Interface>::getBinder() -> Binder & {
+	return binder;
 }
 
 template <typename Binder, typename Interface>

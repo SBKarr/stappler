@@ -223,6 +223,22 @@ struct Server::Config : public mem::AllocBase {
 		db::Field::Data("headers"),
 		db::Field::Data("data"),
 		db::Field::Integer("time"),
+		db::Field::Custom(new db::FieldTextArray("tags", db::Flags::Indexed,
+				db::DefaultFn([&] (const mem::Value &data) -> mem::Value {
+			mem::Vector<mem::String> tags;
+			for (auto &it : data.getArray("data")) {
+				auto text = it.getString("source");
+				if (!text.empty()) {
+					mem::emplace_ordered(tags, text);
+				}
+			}
+
+			mem::Value ret;
+			for (auto &it : tags) {
+				ret.addString(it);
+			}
+			return ret;
+		})))
 	});
 
 	mem::Vector<mem::Pair<uint32_t, db::Interface::StorageType>> storageTypes;

@@ -40,6 +40,7 @@ THE SOFTWARE.
 #include "SPugCache.h"
 #include "ExternalSession.h"
 #include "SEDbdModule.h"
+#include "STFieldTextArray.h"
 
 NS_SA_BEGIN
 
@@ -384,6 +385,22 @@ struct Server::Config : public AllocPool {
 		db::Field::Data("headers"),
 		db::Field::Data("data"),
 		db::Field::Integer("time"),
+		db::Field::Custom(new db::FieldTextArray("tags", db::Flags::Indexed,
+				db::DefaultFn([&] (const mem::Value &data) -> mem::Value {
+			mem::Vector<mem::String> tags;
+			for (auto &it : data.getArray("data")) {
+				auto text = it.getString("source");
+				if (!text.empty()) {
+					mem::emplace_ordered(tags, text);
+				}
+			}
+
+			mem::Value ret;
+			for (auto &it : tags) {
+				ret.addString(it);
+			}
+			return ret;
+		})))
 	});
 
 	Vector<Pair<String, data::Value>> handlers;
