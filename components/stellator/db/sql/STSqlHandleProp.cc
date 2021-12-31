@@ -75,7 +75,9 @@ size_t SqlHandle::getFileCount(Worker &w, SqlQuery &query, uint64_t oid, uint64_
 	selectQuery(query, [&] (Result &result) {
 		if (!result.empty()) {
 			ret = size_t(result.current().toInteger(0));
+			return true;
 		}
+		return false;
 	});
 	return ret;
 }
@@ -94,7 +96,9 @@ size_t SqlHandle::getArrayCount(Worker &w, SqlQuery &query, uint64_t oid, const 
 	selectQuery(query, [&] (Result &result) {
 		if (!result.empty()) {
 			ret = size_t(result.current().toInteger(0));
+			return true;
 		}
+		return false;
 	});
 	return ret;
 }
@@ -152,7 +156,9 @@ size_t SqlHandle::getObjectCount(Worker &w, SqlQuery &query, uint64_t oid, uint6
 		selectQuery(query, [&] (Result &result) {
 			if (!result.empty()) {
 				ret = size_t(result.current().toInteger(0));
+				return true;
 			}
+			return false;
 		});
 	}
 	return ret;
@@ -208,7 +214,9 @@ size_t SqlHandle::getSetCount(Worker &w, SqlQuery &query, uint64_t oid, const Fi
 		selectQuery(query, [&] (Result &result) {
 			if (!result.empty()) {
 				ret = size_t(result.current().toInteger(0));
+				return true;
 			}
+			return false;
 		});
 	}
 	return ret;
@@ -261,7 +269,9 @@ size_t SqlHandle::getViewCount(Worker &w, SqlQuery &query, uint64_t oid, const F
 		selectQuery(query, [&] (Result &result) {
 			if (!result.empty()) {
 				ret = size_t(result.current().toInteger(0));
+				return true;
 			}
+			return false;
 		});
 	}
 	return ret;
@@ -302,7 +312,9 @@ size_t SqlHandle::getSimpleCount(Worker &w, SqlQuery &query, uint64_t oid, const
 	selectQuery(query, [&] (Result &result) {
 		if (!result.empty()) {
 			ret = size_t(result.current().toInteger(0));
+			return true;
 		}
+		return false;
 	});
 	return ret;
 }

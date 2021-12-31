@@ -113,8 +113,8 @@ int64_t Adapter::getDeltaValue(const Scheme &s, const FieldView &v, uint64_t id)
 	return _interface->getDeltaValue(s, v, id);
 }
 
-bool Adapter::select(Worker &w, const Query &q, const mem::Callback<void(Result &)> &cb) const {
-	return _interface->select(w, q, cb);
+bool Adapter::foreach(Worker &w, const Query &q, const mem::Callback<bool(mem::Value &)> &cb) const {
+	return _interface->foreach(w, q, cb);
 }
 
 mem::Value Adapter::select(Worker &w, const Query &q) const {
@@ -487,7 +487,7 @@ size_t ResultRow::size() const {
 mem::Value ResultRow::toData(const db::Scheme &scheme, const mem::Map<mem::String, db::Field> &viewFields,
 		const mem::Vector<const Field *> &virtuals) {
 	mem::Value row(mem::Value::Type::DICTIONARY);
-	row.asDict().reserve(result->getFieldsCount());
+	row.asDict().reserve(result->getFieldsCount() + virtuals.size());
 	mem::Value *deltaPtr = nullptr;
 	for (size_t i = 0; i < result->getFieldsCount(); i++) {
 		auto n = result->getFieldName(i);

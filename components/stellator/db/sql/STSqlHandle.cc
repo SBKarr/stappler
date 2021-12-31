@@ -42,6 +42,7 @@ mem::Value SqlHandle::get(const stappler::CoderSource &key) {
 			if (!res.empty()) {
 				ret = stappler::data::read<mem::BytesView, mem::Interface>(res.current().toBytes(0));
 			}
+			return true;
 		});
 	});
 	return ret;
@@ -107,13 +108,14 @@ db::User * SqlHandle::authorizeUser(const db::Auth &auth, const mem::StringView 
 					stappler::pair("cooldown", mem::Value((int64_t)config::getMaxAuthTime().toSeconds())),
 					stappler::pair("failedAttempts", mem::Value((int64_t)count)),
 				});
-				return;
+				return false;
 			}
 
 			auto dv = res.decode(auth.getScheme(), mem::Vector<const Field *>());
 			if (dv.size() == 1) {
 				ud = std::move(dv.getValue(0));
 			}
+			return true;
 		});
 
 		if (!ud) {
@@ -166,6 +168,7 @@ db::User * SqlHandle::authorizeUser(const db::Auth &auth, const mem::StringView 
 				}
 				performQuery(query);
 			}
+			return true;
 		});
 	});
 
@@ -267,6 +270,7 @@ int64_t SqlHandle::processBroadcasts(const stappler::Callback<void(mem::BytesVie
 						}
 					}
 				}
+				return true;
 			});
 		}
 	});
@@ -350,6 +354,7 @@ int64_t SqlHandle::getDeltaValue(const Scheme &scheme) {
 				if (res) {
 					ret = res.current().toInteger(0);
 				}
+				return true;
 			});
 		});
 		return ret;
@@ -368,6 +373,7 @@ int64_t SqlHandle::getDeltaValue(const Scheme &scheme, const db::FieldView &view
 				if (res) {
 					ret = res.current().toInteger(0);
 				}
+				return true;
 			});
 		});
 		return ret;
@@ -415,6 +421,7 @@ mem::Value SqlHandle::getHistory(const Scheme &scheme, const stappler::Time &tim
 					}
 				}
 			}
+			return true;
 		});
 	});
 	return ret;
@@ -455,6 +462,7 @@ mem::Value SqlHandle::getHistory(const db::FieldView &view, const Scheme *scheme
 					}
 				}
 			}
+			return true;
 		});
 	});
 
@@ -523,7 +531,9 @@ int64_t SqlHandle::selectQueryId(const SqlQuery &query) {
 	selectQuery(query, [&] (Result &res) {
 		if (!res.empty()) {
 			id = res.readId();
+			return true;
 		}
+		return false;
 	});
 	return id;
 }
@@ -536,7 +546,9 @@ size_t SqlHandle::performQuery(const SqlQuery &query) {
 	selectQuery(query, [&] (Result &res) {
 		if (res.success()) {
 			ret = res.getAffectedRows();
+			return true;
 		}
+		return false;
 	});
 	return ret;
 }
@@ -546,7 +558,9 @@ mem::Value SqlHandle::selectValueQuery(const Scheme &scheme, const SqlQuery &que
 	selectQuery(query, [&] (Result &result) {
 		if (result) {
 			ret = result.decode(scheme, virtuals);
+			return true;
 		}
+		return false;
 	});
 	return ret;
 }
@@ -556,7 +570,9 @@ mem::Value SqlHandle::selectValueQuery(const Field &field, const SqlQuery &query
 	selectQuery(query, [&] (Result &result) {
 		if (result) {
 			ret = result.decode(field, virtuals);
+			return true;
 		}
+		return false;
 	});
 	return ret;
 }
@@ -572,7 +588,9 @@ void SqlHandle::selectValueQuery(mem::Value &objs, const FieldView &field, const
 			} else if (vals.isArray() && objs.isArray()) {
 				Handle_mergeViews(objs, vals);
 			}
+			return true;
 		}
+		return false;
 	});
 }
 

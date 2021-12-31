@@ -939,6 +939,10 @@ bool Scheme::removeWithWorker(Worker &w, uint64_t oid) const {
 	}
 }
 
+bool Scheme::foreachWithWorker(Worker &w, const Query &q, const mem::Callback<bool(mem::Value &)> &cb) const {
+	return w.transaction().foreach(w, q, cb);
+}
+
 mem::Value Scheme::selectWithWorker(Worker &w, const Query &q) const {
 	return w.transaction().select(w, q);
 }

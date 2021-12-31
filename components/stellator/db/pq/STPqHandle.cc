@@ -441,7 +441,7 @@ void Handle::makeQuery(const stappler::Callback<void(sql::SqlQuery &)> &cb) {
 	cb(query);
 }
 
-bool Handle::selectQuery(const sql::SqlQuery &query, const stappler::Callback<void(sql::Result &)> &cb,
+bool Handle::selectQuery(const sql::SqlQuery &query, const stappler::Callback<bool(sql::Result &)> &cb,
 		const mem::Callback<void(const mem::Value &)> &errCb) {
 	if (!conn.get() || getTransactionStatus() == db::TransactionStatus::Rollback) {
 		return false;
@@ -476,8 +476,7 @@ bool Handle::selectQuery(const sql::SqlQuery &query, const stappler::Callback<vo
 	lastError = res.getError();
 
 	db::sql::Result ret(&res);
-	cb(ret);
-	return res.isSuccess();
+	return cb(ret);
 }
 
 bool Handle::performSimpleQuery(const mem::StringView &query, const mem::Callback<void(const mem::Value &)> &errCb) {

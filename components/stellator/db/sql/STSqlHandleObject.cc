@@ -75,7 +75,7 @@ static mem::Value Handle_preparePostUpdate(mem::Value &data, const mem::Map<mem:
 	return postUpdate;
 }
 
-bool SqlHandle::select(Worker &worker, const Query &q, const mem::Callback<void(Result &)> &cb) {
+bool SqlHandle::foreach(Worker &worker, const Query &q, const mem::Callback<bool(mem::Value &)> &cb) {
 	bool ret = false;
 	auto &scheme = worker.scheme();
 	makeQuery([&] (SqlQuery &query) {
@@ -83,13 +83,31 @@ bool SqlHandle::select(Worker &worker, const Query &q, const mem::Callback<void(
 		if (ordField.empty()) {
 			SqlQuery::Context ctx(query, scheme, worker, q);
 			query.writeQuery(ctx);
-			ret = selectQuery(query, cb);
+			ret = selectQuery(query, [&] (Result &res) -> bool {
+				auto virtuals = ctx.getVirtuals();
+				for (auto it : res) {
+					auto d = it.toData(scheme, mem::Map<mem::String, db::Field>(), virtuals);
+					if (!cb(d)) {
+						return false;
+					}
+				}
+				return true;
+			});
 		} else if (auto f = scheme.getField(ordField)) {
 			switch (f->getType()) {
 			case Type::Set: {
 				SqlQuery::Context ctx(query, *f->getForeignScheme(), worker, q);
 				if (query.writeQuery(ctx, scheme, q.getQueryId(), *f)) {
-					ret = selectQuery(query, cb);
+					ret = selectQuery(query, [&] (Result &res) -> bool {
+						auto virtuals = ctx.getVirtuals();
+						for (auto it : res) {
+							auto d = it.toData(*f->getForeignScheme(), mem::Map<mem::String, db::Field>(), virtuals);
+							if (!cb(d)) {
+								return false;
+							}
+						}
+						return true;
+					});
 				}
 				break;
 			}
@@ -299,6 +317,7 @@ mem::Value SqlHandle::create(Worker &worker, mem::Value &idata) {
 							}
 						}
 					}
+					return true;
 				});
 			});
 
@@ -502,7 +521,9 @@ size_t SqlHandle::count(Worker &worker, const db::Query &q) {
 			selectQuery(query, [&] (Result &res) {
 				if (!res.empty()) {
 					ret = res.current().toInteger(0);
+					return true;
 				}
+				return false;
 			});
 		} else if (auto f = scheme.getField(ordField)) {
 			switch (f->getType()) {
@@ -631,7 +652,9 @@ mem::Vector<int64_t> SqlHandle::performQueryListForIds(const QueryList &list, si
 		selectQuery(query, [&] (Result &res) {
 			for (auto it : res) {
 				ret.push_back(it.toInteger(0));
+				return true;
 			}
+			return false;
 		});
 	});
 
@@ -705,6 +728,7 @@ mem::Vector<int64_t> SqlHandle::getReferenceParents(const Scheme &objectScheme, 
 						vec.emplace_back(id);
 					}
 				}
+				return true;
 			});
 		});
 	}

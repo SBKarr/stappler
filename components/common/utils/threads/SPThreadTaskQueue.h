@@ -119,6 +119,7 @@ public:
 	static void workerThread(ThreadHandlerInterface *tm, const TaskQueue *q);
 
 	virtual void threadInit() { }
+	virtual void threadDispose() { }
 	virtual bool worker() { return false; }
 };
 

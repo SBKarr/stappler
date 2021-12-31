@@ -157,6 +157,10 @@ public: // worker interface
 	template <typename Storage, typename _Value> auto get(Storage &&, _Value &&, std::initializer_list<const Field *> &&fields, UpdateFlags = UpdateFlags::None) const -> mem::Value;
 	template <typename Storage, typename _Value> auto get(Storage &&, _Value &&, mem::SpanView<const Field *> fields, UpdateFlags = UpdateFlags::None) const -> mem::Value;
 
+	// Select objects via callback iterator
+	template <typename T> auto foreach(T &&t, const Query &,
+			const mem::Callback<bool(mem::Value &)> &, UpdateFlags = UpdateFlags::None) const -> bool;
+
 	// Select objects by query
 	// - db::Transaction, db::Query
 	template <typename T, typename ... Args> auto select(T &&t, Args && ... args) const -> mem::Value;
@@ -197,6 +201,8 @@ public: // worker interface
 
 protected:// CRUD functions
 	friend class Worker;
+
+	bool foreachWithWorker(Worker &, const Query &, const mem::Callback<bool(mem::Value &)> &) const;
 
 	// returns Array with zero or more Dictionaries with object data or Null value
 	mem::Value selectWithWorker(Worker &, const Query &) const;
@@ -325,6 +331,11 @@ inline auto Scheme::get(Storage &&s, _Value &&v, std::initializer_list<const Fie
 template <typename Storage, typename _Value>
 inline auto Scheme::get(Storage &&s, _Value &&v, mem::SpanView<const Field *> fields, UpdateFlags flags) const -> mem::Value {
 	return Worker(*this, std::forward<Storage>(s)).get(std::forward<_Value>(v), fields, flags);
+}
+
+template <typename Storage>
+inline auto Scheme::foreach(Storage &&s, const Query &q, const mem::Callback<bool(mem::Value &)> &cb, UpdateFlags flags) const -> bool {
+	return Worker(*this, std::forward<Storage>(s)).foreach(q, cb, flags);
 }
 
 template <typename T, typename ... Args>

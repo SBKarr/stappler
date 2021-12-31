@@ -35,6 +35,7 @@ bool _isArmNeonSupported() { return false; }
 void _workerThread(thread::ThreadHandlerInterface *tm) {
 	tm->threadInit();
     while (tm->worker()) { }
+    tm->threadDispose();
 }
 
 }

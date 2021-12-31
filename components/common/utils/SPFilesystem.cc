@@ -847,20 +847,26 @@ String canonical(const StringView &path) {
 	}
 
 	auto cachePath = filesystem::cachesPath();
-	auto documentsPath = filesystem::documentsPath();
-	auto writablePath = filesystem::writablePath();
-	auto currentDir = filesystem::currentDir();
 	if (path.starts_with(StringView(cachePath))) {
 		return merge("%CACHE%", path.sub(cachePath.size()));
-	} else if (path.starts_with(StringView(documentsPath)) == 0) {
-		return merge("%DOCUMENTS%", path.sub(documentsPath.size()));
-	} else if (path.starts_with(StringView(writablePath)) == 0) {
-		return merge("%WRITEABLE%", path.sub(writablePath.size()));
-	} else if (path.starts_with(StringView(currentDir)) == 0) {
-		return merge("%CURRENT%", path.sub(currentDir.size()));
-	} else {
-		return path.str();
 	}
+
+	auto documentsPath = filesystem::documentsPath();
+	if (path.starts_with(StringView(documentsPath)) == 0) {
+		return merge("%DOCUMENTS%", path.sub(documentsPath.size()));
+	}
+
+	auto writablePath = filesystem::writablePath();
+	if (path.starts_with(StringView(writablePath)) == 0) {
+		return merge("%WRITEABLE%", path.sub(writablePath.size()));
+	}
+
+	auto currentDir = filesystem::currentDir();
+	if (path.starts_with(StringView(currentDir)) == 0) {
+		return merge("%CURRENT%", path.sub(currentDir.size()));
+	}
+
+	return path.str();
 }
 String root(const StringView &path) {
 	size_t pos = path.rfind('/');

@@ -34,12 +34,12 @@ public:
 	using CompletedCallback = Function<void(const NetworkDownload *download, bool success)>;
 
     NetworkDownload();
+    virtual ~NetworkDownload() { }
 
     virtual bool init(const StringView &url, const StringView &fileName);
 
     virtual bool execute() override;
     virtual bool performQuery() override;
-    virtual void onComplete() override;
 
     virtual void notifyOnStarted();
     virtual void notifyOnProgress(float progress);

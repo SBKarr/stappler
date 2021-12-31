@@ -70,6 +70,9 @@ public:
 
 	Self pdup(memory::pool_t * = nullptr) const;
 
+	template <typename Interface = memory::DefaultInterface>
+	auto bytes() const -> typename Interface::BytesType;
+
 private:
 	template <typename T>
 	auto convert(const uint8_t *data) -> T;
@@ -212,6 +215,11 @@ auto BytesViewTemplate<Endianess>::pdup(memory::pool_t *p) const -> Self {
 	return Self(buf, this->size());
 }
 
+template <Endian Endianess>
+template <typename Interface>
+auto BytesViewTemplate<Endianess>::bytes() const -> typename Interface::BytesType {
+	return typename Interface::BytesType(data(), data() + size());
+}
 
 template <Endian Endianess>
 template <typename T>

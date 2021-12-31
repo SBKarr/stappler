@@ -73,6 +73,8 @@ struct CoderSource {
 	size_t size() const { return _data.size() - _offset; }
 	bool empty() const { return _data.empty() || _offset == _data.size(); }
 
+	BytesViewTemplate<Endian::Network> view() const { return _data; }
+
 	uint8_t operator[] (size_t s) const { return _data[s + _offset]; }
 
 	size_t read(uint8_t *buf, size_t nbytes) {

@@ -305,7 +305,7 @@ void Handle::makeQuery(const stappler::Callback<void(sql::SqlQuery &)> &cb) {
 	cb(query);
 }
 
-bool Handle::selectQuery(const sql::SqlQuery &query, const stappler::Callback<void(sql::Result &)> &cb,
+bool Handle::selectQuery(const sql::SqlQuery &query, const stappler::Callback<bool(sql::Result &)> &cb,
 		const mem::Callback<void(const mem::Value &)> &errCb) {
 	if (!conn.get() || getTransactionStatus() == db::TransactionStatus::Rollback) {
 		return false;

@@ -174,6 +174,8 @@ public:
 	mem::Value get(const mem::StringView &alias, mem::SpanView<const Field *> fields, UpdateFlags = UpdateFlags::None);
 	mem::Value get(const mem::Value &id, mem::SpanView<const Field *> fields, UpdateFlags = UpdateFlags::None);
 
+	bool foreach(const Query &, const mem::Callback<bool(mem::Value &)> &, UpdateFlags = UpdateFlags::None);
+
 	// returns Array with zero or more Dictionaries with object data or Null value
 	mem::Value select(const Query &, UpdateFlags = UpdateFlags::None);
 

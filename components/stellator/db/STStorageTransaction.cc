@@ -157,6 +157,32 @@ struct DataHolder {
 	AccessRoleId _tmpRole = AccessRoleId::Nobody;
 };
 
+bool Transaction::foreach(Worker &w, const Query &query, const mem::Callback<bool(mem::Value &)> &cb) const {
+	if (!w.scheme().hasAccessControl()) {
+		return _data->adapter.foreach(w, query, cb);
+	}
+
+	DataHolder h(_data, w);
+
+	if (!isOpAllowed(w.scheme(), Select)) {
+		return false;
+	}
+
+	auto r = w.scheme().getAccessRole(_data->role);
+	auto d = w.scheme().getAccessRole(AccessRoleId::Default);
+
+	if ((d && d->onSelect && !d->onSelect(w, query)) || (r && r->onSelect && !r->onSelect(w, query))) {
+		return false;
+	}
+
+	return _data->adapter.foreach(w, query, [&] (mem::Value &val) -> bool {
+		if (processReturnObject(w.scheme(), val)) {
+			return cb(val);
+		}
+		return true;
+	});
+}
+
 mem::Value Transaction::select(Worker &w, const Query &query) const {
 	if (!w.scheme().hasAccessControl()) {
 		auto val = _data->adapter.select(w, query);

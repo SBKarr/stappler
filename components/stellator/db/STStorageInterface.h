@@ -98,7 +98,7 @@ public:
 
 	// perform select operation with result cursor callback
 	// fields will not be resolved in this case, you should call `decode` or `toData` from result manually
-	virtual bool select(Worker &, const Query &, const mem::Callback<void(Result &)> &) = 0;
+	virtual bool foreach(Worker &, const Query &, const mem::Callback<bool(mem::Value &)> &) = 0;
 
 	// perform select operation, returns resolved data
 	virtual mem::Value select(Worker &, const Query &) = 0;

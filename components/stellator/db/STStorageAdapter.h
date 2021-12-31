@@ -76,7 +76,7 @@ protected:
 	mem::Vector<int64_t> performQueryListForIds(const QueryList &, size_t count = stappler::maxOf<size_t>()) const;
 	mem::Value performQueryList(const QueryList &, size_t count = stappler::maxOf<size_t>(), bool forUpdate = false) const;
 
-	bool select(Worker &, const Query &, const mem::Callback<void(Result &)> &) const;
+	bool foreach(Worker &, const Query &, const mem::Callback<bool(mem::Value &)> &) const;
 	mem::Value select(Worker &, const Query &) const;
 
 	mem::Value create(Worker &, mem::Value &) const;

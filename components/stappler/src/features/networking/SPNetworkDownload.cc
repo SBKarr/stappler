@@ -42,6 +42,11 @@ bool NetworkDownload::init(const StringView &url, const StringView &fileName) {
     if (!fileName.empty()) {
     	setReceiveFile(fileName, false);
     }
+
+    addCompleteCallback([this] (const Task &, bool success) {
+    	notifyOnComplete(success);
+    });
+
     return true;
 }
 
@@ -56,11 +61,6 @@ bool NetworkDownload::performQuery() {
 		filesystem::remove(getReceiveFile());
     }
 	return ret;
-}
-
-void NetworkDownload::onComplete() {
-	notifyOnComplete(isSuccessful());
-	NetworkTask::onComplete();
 }
 
 void NetworkDownload::notifyOnStarted() {

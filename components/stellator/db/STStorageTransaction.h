@@ -124,6 +124,8 @@ public: // adapter interface
 	bool isInTransaction() const;
 	TransactionStatus getTransactionStatus() const;
 
+	bool foreach(Worker &, const Query &, const mem::Callback<bool(mem::Value &)> &) const;
+
 	// returns Array with zero or more Dictionaries with object data or Null value
 	mem::Value select(Worker &, const Query &) const;
 

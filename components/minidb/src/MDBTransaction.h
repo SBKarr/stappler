@@ -87,6 +87,7 @@ public:
 	bool fixScheme(const db::Scheme *) const;
 
 public: // CRUD
+	bool foreach(Worker &, const Query &, const mem::Callback<bool(mem::Value &)> &);
 	mem::Value select(Worker &, const db::Query &);
 	mem::Value create(Worker &, mem::Value &);
 	mem::Value save(Worker &, uint64_t oid, const mem::Value &obj, const mem::Vector<mem::String> &fields);
@@ -128,7 +129,7 @@ protected:
 
 	bool checkUnique(const IndexMap &map) const;
 
-	bool performSelectList(TreeStack &, const Scheme &, const db::Query &, const mem::Callback<void(const OidPosition &)> &) const;
+	bool performSelectList(TreeStack &, const Scheme &, const db::Query &, const mem::Callback<bool(const OidPosition &)> &) const;
 
 	bool performIndexScan(TreeStack &, const SchemeCell &, const IndexCell &, mem::SpanView<const Query::Select *> vec, Ordering,
 			const mem::Callback<bool(const OidPosition &)> &) const;

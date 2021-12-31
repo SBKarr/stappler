@@ -55,7 +55,7 @@ public:
 
 	virtual void makeQuery(const mem::Callback<void(sql::SqlQuery &)> &cb) override;
 
-	virtual bool selectQuery(const db::sql::SqlQuery &, const mem::Callback<void(sql::Result &)> &cb,
+	virtual bool selectQuery(const db::sql::SqlQuery &, const mem::Callback<bool(sql::Result &)> &cb,
 			const mem::Callback<void(const mem::Value &)> &err = nullptr) override;
 	virtual bool performSimpleQuery(const mem::StringView &,
 			const mem::Callback<void(const mem::Value &)> &err = nullptr) override;

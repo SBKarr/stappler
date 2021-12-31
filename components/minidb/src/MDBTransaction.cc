@@ -445,6 +445,68 @@ static mem::Vector<mem::StringView> Transaction_getQueryName(Worker &worker, con
 	return names;
 }
 
+bool Transaction::foreach(Worker &worker, const db::Query &query, const mem::Callback<bool(mem::Value &)> &cb) {
+	auto schemeData = _storage->getSchemes().find(&worker.scheme());
+	if (schemeData == _storage->getSchemes().end()) {
+		return false;
+	}
+
+	std::shared_lock<std::shared_mutex> lock(_mutex);
+	auto schemePage = openPage(schemeData->second.first.page, OpenMode::Read);
+	if (!schemePage) {
+		return false;
+	}
+
+	auto schemeCell = (SchemeCell *)(schemePage->bytes.data() + schemeData->second.first.offset);
+	if (schemeCell->oid.value != schemeData->second.first.value || schemeCell->root == UndefinedPage) {
+		closePage(schemePage);
+		return false;
+	}
+
+	TreeStack stack({*this, schemeCell->root});
+	stack.nodes.emplace_back(schemePage);
+	if (auto target = query.getSingleSelectId()) {
+		auto it = stack.openOnOid(target);
+		if (it && it != stack.frames.back().end()) {
+			if (auto cell = stack.getOidCell(*(OidPosition *)it.data)) {
+				auto names = Transaction_getQueryName(worker, query);
+				auto v = decodeValue(worker.scheme(), cell, names);
+				return cb(v);
+			}
+		}
+	} else if (!query.getSelectAlias().empty()) {
+		// TODO: not implemented
+	} else {
+		bool ret = true;
+		auto names = Transaction_getQueryName(worker, query);
+		auto orig = mem::pool::acquire();
+		auto p = mem::pool::create(orig);
+		mem::pool::push(p);
+		ret = performSelectList(stack, worker.scheme(), query, [&] (const OidPosition &pos) {
+			if (auto targetPage = openPage(pos.page, OpenMode::Read)) {
+				auto h = (OidCellHeader *)(targetPage->bytes.data() + pos.offset);
+				if (auto cell = stack.getOidCell(targetPage, h, false)) {
+					mem::pool::push(orig);
+					do {
+						auto val = decodeValue(worker.scheme(), cell, names);
+						if (!cb(val)) {
+							return false;
+						}
+					} while (0);
+					mem::pool::pop();
+				}
+				closePage(targetPage);
+			}
+			return true;
+		});
+		mem::pool::pop();
+		mem::pool::destroy(p);
+		return ret;
+	}
+
+	return mem::Value();
+}
+
 mem::Value Transaction::select(Worker &worker, const db::Query &query) {
 	auto schemeData = _storage->getSchemes().find(&worker.scheme());
 	if (schemeData == _storage->getSchemes().end()) {
@@ -494,6 +556,7 @@ mem::Value Transaction::select(Worker &worker, const db::Query &query) {
 				}
 				closePage(targetPage);
 			}
+			return true;
 		});
 		mem::pool::pop();
 		mem::pool::destroy(p);
@@ -739,6 +802,7 @@ size_t Transaction::count(Worker &worker, const db::Query &query) {
 		size_t counter = 0;
 		performSelectList(stack, worker.scheme(), query, [&] (const OidPosition &pos) {
 			++ counter;
+			return true;
 		});
 		mem::pool::pop();
 		mem::pool::destroy(p);
@@ -1072,7 +1136,7 @@ static void Transaction_getIndexHints(mem::SpanView<const Query::Select *> vec, 
 }
 
 bool Transaction::performSelectList(TreeStack &stack, const Scheme &scheme, const db::Query &query,
-		const mem::Callback<void(const OidPosition &)> &cb) const {
+		const mem::Callback<bool(const OidPosition &)> &cb) const {
 	auto schemeCell = getSchemeCell(&scheme);
 	if (schemeCell.root == UndefinedPage) {
 		return false;
@@ -1179,10 +1243,12 @@ bool Transaction::performSelectList(TreeStack &stack, const Scheme &scheme, cons
 				if (offset > 0) {
 					-- offset;
 				} else if (limit > 0) {
-					cb(pos);
+					if (!cb(pos)) {
+						return false; // stop iteration
+					}
 					-- limit;
 				} else {
-					return false; //  stop iteration
+					return false; // stop iteration
 				}
 			}
 			return true;
@@ -1199,10 +1265,12 @@ bool Transaction::performSelectList(TreeStack &stack, const Scheme &scheme, cons
 					if (offset > 0) {
 						-- offset;
 					} else if (limit > 0) {
-						cb(pos);
+						if (!cb(pos)) {
+							return false; // stop iteration
+						}
 						-- limit;
 					} else {
-						return false; //  stop iteration
+						return false; // stop iteration
 					}
 				}
 				return true;
@@ -1219,10 +1287,12 @@ bool Transaction::performSelectList(TreeStack &stack, const Scheme &scheme, cons
 				if (offset > 0) {
 					-- offset;
 				} else if (limit > 0) {
-					cb(pos);
+					if (!cb(pos)) {
+						return false; // stop iteration
+					}
 					-- limit;
 				} else {
-					return false; //  stop iteration
+					return false; // stop iteration
 				}
 			}
 			return true;

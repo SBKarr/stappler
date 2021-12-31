@@ -73,7 +73,7 @@ public:
 public: // interface
 	virtual void makeQuery(const stappler::Callback<void(SqlQuery &)> &cb) = 0;
 
-	virtual bool selectQuery(const SqlQuery &, const mem::Callback<void(Result &)> &cb,
+	virtual bool selectQuery(const SqlQuery &, const mem::Callback<bool(Result &)> &cb,
 			const mem::Callback<void(const mem::Value &)> &err = nullptr) = 0;
 	virtual bool performSimpleQuery(const mem::StringView &,
 			const mem::Callback<void(const mem::Value &)> &err = nullptr) = 0;
@@ -83,7 +83,8 @@ public: // interface
 	virtual bool isSuccess() const = 0;
 
 public:
-	virtual bool select(Worker &, const Query &, const mem::Callback<void(Result &)> &) override;
+	virtual bool foreach(Worker &, const Query &, const mem::Callback<bool(mem::Value &)> &) override;
+
 	virtual mem::Value select(Worker &, const db::Query &) override;
 
 	virtual mem::Value create(Worker &, mem::Value &) override;

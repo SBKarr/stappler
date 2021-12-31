@@ -447,6 +447,13 @@ mem::Value Worker::get(const mem::Value &id, mem::StringView it, UpdateFlags fla
 	return mem::Value();
 }
 
+bool Worker::foreach(const Query &query, const mem::Callback<bool(mem::Value &)> &cb, UpdateFlags flags) {
+	if ((flags & UpdateFlags::GetAll) != UpdateFlags::None) {
+		_required.includeAll = true;
+	}
+	return _scheme->foreachWithWorker(*this, query, cb);
+}
+
 mem::Value Worker::select(const Query &q, UpdateFlags flags) {
 	if ((flags & UpdateFlags::GetAll) != UpdateFlags::None) {
 		_required.includeAll = true;
