@@ -28,6 +28,7 @@ THE SOFTWARE.
 #include "STVirtualFile.h"
 #include "STTask.h"
 #include "STPqHandle.h"
+#include "STFieldTextArray.h"
 
 #include "SPJsonWebToken.h"
 #include "SPugCache.h"

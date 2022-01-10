@@ -24,6 +24,7 @@ THE SOFTWARE.
 #define COMPONENTS_COMMON_UTILS_THREADS_SPTHREADTASK_H_
 
 #include "SPRef.h"
+#include "SPMemPriorityQueue.h"
 
 NS_SP_EXT_BEGIN(thread)
 
@@ -38,7 +39,8 @@ public: /* typedefs */
 	/* Function to be executed after task is performed */
 	using CompleteCallback = std::function<void(const Task &, bool)>;
 
-public: /* interface */
+	using PriorityType = ValueWrapper<memory::PriorityQueue<Rc<Task>>::PriorityType, class PriorityTypeFlag>;
+
 	/* creates empty task with only complete function to be used as callback from other thread */
 	bool init(const CompleteCallback &, Ref * = nullptr);
 	bool init(CompleteCallback &&, Ref * = nullptr);
@@ -70,10 +72,10 @@ public: /* interface */
 	int getTag()  const{ return _tag; }
 
 	/* set default task priority */
-	void setPriority(int priority) { _priority = priority; }
+	void setPriority(PriorityType::Type priority) { _priority = PriorityType(priority); }
 
 	/* get task priority */
-	int getPriority()  const{ return _priority; }
+	PriorityType getPriority() const { return _priority; }
 
 	void setTarget(Ref *target) { _target = target; }
 
@@ -106,7 +108,7 @@ public: /* constructors */
 protected:
 	bool _isSuccessful = true;
 	int _tag = -1;
-	int _priority = 0;
+	PriorityType _priority = PriorityType();
 
 	Rc<Ref> _target;
 

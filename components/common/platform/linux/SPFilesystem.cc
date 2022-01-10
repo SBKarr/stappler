@@ -35,6 +35,14 @@ namespace stappler::platform::filesystem {
 		String _appPath;
 		String _defaultPath;
 
+		static PathSource *getInstance() {
+			static PathSource *s_paths = nullptr;
+			if (!s_paths) {
+				s_paths = new PathSource;
+			}
+			return s_paths;
+		}
+
 		PathSource() {
 		    char fullpath[256] = {0};
 		    ssize_t length = readlink("/proc/self/exe", fullpath, sizeof(fullpath)-1);
@@ -53,20 +61,18 @@ namespace stappler::platform::filesystem {
 		}
 	};
 
-	static PathSource s_paths;
-
 	String _getPlatformPath(const StringView &path) {
 		if (filepath::isBundled(path)) {
-			return filepath::merge(s_paths._appPath, path.sub("%PLATFORM%:"_len));
+			return filepath::merge(PathSource::getInstance()->_appPath, path.sub("%PLATFORM%:"_len));
 		}
-		return filepath::merge(s_paths._appPath, path);
+		return filepath::merge(PathSource::getInstance()->_appPath, path);
 	}
 
 	String _getWritablePath() {
-		return s_paths._defaultPath + "/Caches/";
+		return PathSource::getInstance()->_defaultPath + "/Caches/";
 	}
 	String _getDocumentsPath() {
-		return s_paths._defaultPath + "/Documents/";
+		return PathSource::getInstance()->_defaultPath + "/Documents/";
 	}
 	String _getCachesPath() {
 		return _getWritablePath();

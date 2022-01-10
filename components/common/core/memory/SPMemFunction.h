@@ -52,6 +52,81 @@ public:
 	using signature_type = ReturnType (ArgumentTypes ...);
 	using allocator_type = Allocator<void *>;
 
+	~function() { clear(); }
+
+	function(const allocator_type &alloc = allocator_type()) noexcept : mAllocator(alloc), mCallback(nullptr) { }
+
+	function(nullptr_t, const allocator_type &alloc = allocator_type()) noexcept : mAllocator(alloc), mCallback(nullptr) { }
+	function &operator= (nullptr_t) noexcept { clear(); mCallback = nullptr; return *this; }
+
+	function(const function & other, const allocator_type &alloc = allocator_type()) noexcept : mAllocator(alloc) {
+		mCallback = other.mCallback;
+		if (mCallback) {
+			mCallback().copy(other.mBuffer, mAllocator, mBuffer);
+		}
+	}
+
+	function & operator = (const function & other) noexcept {
+		clear();
+		mCallback = other.mCallback;
+		if (mCallback) {
+			mCallback().copy(other.mBuffer, mAllocator, mBuffer);
+		}
+		return *this;
+	}
+
+	function(function && other, const allocator_type &alloc = allocator_type()) noexcept : mAllocator(alloc) {
+		mCallback = other.mCallback;
+		if (mCallback) {
+			if (other.mAllocator == mAllocator) {
+				mCallback().move(other.mBuffer, mAllocator, mBuffer);
+			} else {
+				mCallback().copy(other.mBuffer, mAllocator, mBuffer);
+			}
+		}
+	}
+
+	function & operator = (function && other) noexcept {
+		clear();
+		mCallback = other.mCallback;
+		if (mCallback) {
+			if (other.mAllocator == mAllocator) {
+				mCallback().move(other.mBuffer, mAllocator, mBuffer);
+			} else {
+				mCallback().copy(other.mBuffer, mAllocator, mBuffer);
+			}
+		}
+		return *this;
+	}
+
+	template <typename FunctionT,
+		class = typename std::enable_if<!std::is_same<
+			typename std::remove_cv<typename std::remove_reference<FunctionT>::type>::type,
+			function<ReturnType (ArgumentTypes ...)
+		>>::value>::type>
+	function(FunctionT && f, const allocator_type &alloc = allocator_type()) noexcept
+	: mAllocator(alloc) {
+		mCallback = makeFreeFunction(std::forward<FunctionT>(f), mAllocator, mBuffer);
+	}
+
+	template <typename FunctionT>
+	function & operator= (FunctionT &&f) noexcept {
+		clear();
+		mCallback = makeFreeFunction(std::forward<FunctionT>(f), mAllocator, mBuffer);
+		return *this;
+	}
+
+	ReturnType operator () (ArgumentTypes ... args) const {
+		return mCallback().invoke(mBuffer, std::forward<ArgumentTypes>(args) ...);
+	}
+
+	inline operator bool () const noexcept { return mCallback != nullptr; }
+
+	inline bool operator == (nullptr_t) const noexcept { return mCallback == nullptr; }
+	inline bool operator != (nullptr_t) const noexcept { return mCallback != nullptr; }
+
+	const allocator_type &get_allocator() const { return mAllocator; }
+
 private:
 	static constexpr auto OptBufferSize = 16;
 
@@ -133,83 +208,6 @@ private:
 		return [] () { return makeFunctionTraits<FunctionT>(); };
 	}
 
-public:
-	~function() { clear(); }
-
-	function(const allocator_type &alloc = allocator_type()) noexcept : mAllocator(alloc), mCallback(nullptr) { }
-
-	function(nullptr_t, const allocator_type &alloc = allocator_type()) noexcept : mAllocator(alloc), mCallback(nullptr) { }
-	function &operator= (nullptr_t) noexcept { clear(); mCallback = nullptr; return *this; }
-
-	function(const function & other, const allocator_type &alloc = allocator_type()) noexcept : mAllocator(alloc) {
-		mCallback = other.mCallback;
-		if (mCallback) {
-			mCallback().copy(other.mBuffer, mAllocator, mBuffer);
-		}
-	}
-
-	function & operator = (const function & other) noexcept {
-		clear();
-		mCallback = other.mCallback;
-		if (mCallback) {
-			mCallback().copy(other.mBuffer, mAllocator, mBuffer);
-		}
-		return *this;
-	}
-
-	function(function && other, const allocator_type &alloc = allocator_type()) noexcept : mAllocator(alloc) {
-		mCallback = other.mCallback;
-		if (mCallback) {
-			if (other.mAllocator == mAllocator) {
-				mCallback().move(other.mBuffer, mAllocator, mBuffer);
-			} else {
-				mCallback().copy(other.mBuffer, mAllocator, mBuffer);
-			}
-		}
-	}
-
-	function & operator = (function && other) noexcept {
-		clear();
-		mCallback = other.mCallback;
-		if (mCallback) {
-			if (other.mAllocator == mAllocator) {
-				mCallback().move(other.mBuffer, mAllocator, mBuffer);
-			} else {
-				mCallback().copy(other.mBuffer, mAllocator, mBuffer);
-			}
-		}
-		return *this;
-	}
-
-	template <typename FunctionT,
-		class = typename std::enable_if<!std::is_same<
-			typename std::remove_cv<typename std::remove_reference<FunctionT>::type>::type,
-			function<ReturnType (ArgumentTypes ...)
-		>>::value>::type>
-	function(FunctionT && f, const allocator_type &alloc = allocator_type()) noexcept
-	: mAllocator(alloc) {
-		mCallback = makeFreeFunction(std::forward<FunctionT>(f), mAllocator, mBuffer);
-	}
-
-	template <typename FunctionT>
-	function & operator= (FunctionT &&f) noexcept {
-		clear();
-		mCallback = makeFreeFunction(std::forward<FunctionT>(f), mAllocator, mBuffer);
-		return *this;
-	}
-
-	ReturnType operator () (ArgumentTypes ... args) const {
-		return mCallback().invoke(mBuffer, std::forward<ArgumentTypes>(args) ...);
-	}
-
-	inline operator bool () const noexcept { return mCallback != nullptr; }
-
-	inline bool operator == (nullptr_t) const noexcept { return mCallback == nullptr; }
-	inline bool operator != (nullptr_t) const noexcept { return mCallback != nullptr; }
-
-	const allocator_type &get_allocator() const { return mAllocator; }
-
-private:
 	void clear() {
 		if (mCallback) {
 			auto t = mCallback();
@@ -227,22 +225,10 @@ private:
 template <typename UnusedType>
 class callback;
 
+// Modern version. inspired by http://bannalia.blogspot.com/2016/07/passing-capturing-c-lambda-functions-as.html
 template <typename ReturnType, typename ... ArgumentTypes>
 class callback <ReturnType (ArgumentTypes ...)> : public AllocPool {
-private:
-	// Modern version. inspired by http://bannalia.blogspot.com/2016/07/passing-capturing-c-lambda-functions-as.html
-	using FunctionPointer = ReturnType (*) (const void *, ArgumentTypes ...);
-
-	template <typename FunctionType, typename ClassType, typename ... RestArgumentTypes>
-	static FunctionPointer makeMemberFunction(FunctionType ClassType::* f) {
-		return [] (const void* arg, ClassType && obj, RestArgumentTypes ... args) { // note thunk is captureless
-			return (obj.*static_cast<const FunctionType ClassType::*>(arg))(std::forward<RestArgumentTypes>(args) ...);
-		};
-	}
-
 public:
-	static constexpr size_t BufferSize = 256;
-
 	using signature_type = ReturnType (ArgumentTypes ...);
 
 	~callback() {
@@ -292,6 +278,15 @@ public:
 	inline operator bool () const noexcept { return mFunctor != nullptr && mCallback != nullptr; }
 
 private:
+	using FunctionPointer = ReturnType (*) (const void *, ArgumentTypes ...);
+
+	template <typename FunctionType, typename ClassType, typename ... RestArgumentTypes>
+	static FunctionPointer makeMemberFunction(FunctionType ClassType::* f) {
+		return [] (const void* arg, ClassType && obj, RestArgumentTypes ... args) { // note thunk is captureless
+			return (obj.*static_cast<const FunctionType ClassType::*>(arg))(std::forward<RestArgumentTypes>(args) ...);
+		};
+	}
+
 	const void * mFunctor;
 	FunctionPointer mCallback;
 };

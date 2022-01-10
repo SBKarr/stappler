@@ -54,22 +54,10 @@ public:
 	static void performAsync(const ExecuteCallback &, const CompleteCallback & = nullptr, Ref * = nullptr);
 
 	/* Performs action in this thread, task will be constructed in place */
-	void perform(const ExecuteCallback &, const CompleteCallback & = nullptr, Ref * = nullptr);
+	void perform(const ExecuteCallback &, const CompleteCallback & = nullptr, Ref * = nullptr, bool first = false);
 
 	/* Performs task in this thread */
-    void perform(Rc<Task> &&task);
-
-	/* Performs task in this thread */
-    void perform(Rc<Task> &&task, int tag);
-
-	/* Performs task in this thread, priority used to order tasks in queue */
-    void performWithPriority(Rc<Task> &&task, bool insertFirst);
-
-	/* Performs task in this thread, priority used to order tasks in queue */
-    void performWithPriority(Rc<Task> &&task, bool insertFirst, int priority);
-
-	/* Performs task in this thread, priority used to order tasks in queue */
-    void performWithPriority(Rc<Task> &&task, bool insertFirst, int priority, int tag);
+    void perform(Rc<Task> &&task, bool first = false);
 
 	/* Checks if execution is on specific thread */
 	bool isOnThisThread();

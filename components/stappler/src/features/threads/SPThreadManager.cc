@@ -109,31 +109,14 @@ void ThreadManager::perform(Rc<thread::Task> &&task) {
 	}
 }
 
-uint32_t ThreadManager::perform(Thread *thread, Rc<thread::Task> &&task) {
+uint32_t ThreadManager::perform(Thread *thread, Rc<thread::Task> &&task, bool first) {
 	if (task && !_singleThreaded) {
 		if (thread->getId() == maxOf<uint32_t>()) {
 			thread->setId(_nextId);
 			_nextId ++;
 		}
 		TaskManager &tm = getTaskManager(thread);
-		tm.perform(std::move(task));
-		return thread->getId();
-	} else if (task) {
-		task->setSuccessful(task->execute());
-		task->onComplete();
-		return 0;
-	}
-	return 0;
-}
-
-uint32_t ThreadManager::performWithPriority(Thread *thread, Rc<thread::Task> &&task, bool performFirst) {
-	if (task && !_singleThreaded) {
-		if (thread->getId() == maxOf<uint32_t>()) {
-			thread->setId(_nextId);
-			_nextId ++;
-		}
-		TaskManager &tm = getTaskManager(thread);
-		tm.performWithPriority(std::move(task), performFirst);
+		tm.perform(std::move(task), first);
 		return thread->getId();
 	} else if (task) {
 		task->setSuccessful(task->execute());
@@ -236,32 +219,14 @@ Thread &Thread::operator=(Thread &&other) {
 	return *this;
 }
 
-void Thread::perform(Rc<Task> &&task) {
+void Thread::perform(Rc<Task> &&task, bool first) {
 	if (auto tm = ThreadManager::getInstance()) {
-		tm->perform(this, std::move(task));
+		tm->perform(this, std::move(task), first);
 	}
-}
-void Thread::perform(Rc<Task> &&task, int tag) {
-    task->setTag(tag);
-    perform(std::move(task));
-}
-void Thread::perform(const ExecuteCallback &exec, const CompleteCallback &complete, Ref *obj) {
-	perform(Rc<Task>::create(exec, complete, obj));
 }
 
-void Thread::performWithPriority(Rc<Task> &&task, bool performFirst) {
-	if (auto tm = ThreadManager::getInstance()) {
-		tm->performWithPriority(this, std::move(task), performFirst);
-	}
-}
-void Thread::performWithPriority(Rc<Task> &&task, bool performFirst, int priority) {
-	task->setPriority(priority);
-	performWithPriority(std::move(task), performFirst);
-}
-void Thread::performWithPriority(Rc<Task> &&task, bool performFirst, int priority, int tag) {
-	task->setPriority(priority);
-	task->setTag(tag);
-	performWithPriority(std::move(task), performFirst);
+void Thread::perform(const ExecuteCallback &exec, const CompleteCallback &complete, Ref *obj, bool first) {
+	perform(Rc<Task>::create(exec, complete, obj), first);
 }
 
 bool Thread::isOnThisThread() {
@@ -330,45 +295,19 @@ TaskManager &TaskManager::operator=(TaskManager &&other) {
 	return *this;
 }
 
-void TaskManager::perform(Rc<Task> &&task) {
+void TaskManager::perform(Rc<Task> &&task, bool first) {
     if (!task) {
         return;
     }
 
     if (!_queue) {
-    	_queue = Rc<thread::TaskQueue>::alloc(_maxWorkers);
+    	_queue = Rc<thread::TaskQueue>::alloc(_name);
     }
 
-	if (_queue && _queue->spawnWorkers(_threadId, _name)) {
-		_queue->perform(std::move(task));
+	if (_queue) {
+		_queue->spawnWorkers(thread::TaskQueue::Flags::None, _threadId, _maxWorkers);
+		_queue->perform(std::move(task), first);
 	}
-}
-void TaskManager::perform(Rc<Task> &&task, int tag) {
-    task->setTag(tag);
-    perform(std::move(task));
-}
-
-void TaskManager::performWithPriority(Rc<Task> &&task, bool performFirst) {
-    if (!task) {
-        return;
-    }
-
-    if (!_queue) {
-    	_queue = Rc<thread::TaskQueue>::alloc(_maxWorkers);
-    }
-
-	if (_queue && _queue->spawnWorkers(_threadId, _name)) {
-		_queue->performWithPriority(std::move(task), performFirst);
-	}
-}
-void TaskManager::performWithPriority(Rc<Task> &&task, bool performFirst, int priority) {
-	task->setPriority(priority);
-	performWithPriority(std::move(task), performFirst);
-}
-void TaskManager::performWithPriority(Rc<Task> &&task, bool performFirst, int priority, int tag) {
-	task->setPriority(priority);
-	task->setTag(tag);
-	performWithPriority(std::move(task), performFirst);
 }
 
 void TaskManager::update() {

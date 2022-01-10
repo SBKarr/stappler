@@ -46,39 +46,52 @@ struct ThreadInfo {
 
 class TaskQueue : public Ref {
 public:
+	enum class Flags {
+		None = 0,
+
+		// allow to submit task for specific thread via `perform(Map<uint32_t, Vector<Rc<Task>>> &&)`
+		// it requires more additional space for internal local queues and less optimal thread scheduling
+		// with `condition_variable_any` instead of `condition_variable`
+		LocalQueue = 1,
+
+		// allow queue to be externally cancelled with `performAll` and `waitForAll`
+		// it requires extra condition to track count of tasks executing
+		Cancelable = 2,
+	};
+
+	struct WorkerContext;
+
 	static const TaskQueue *getOwner();
 
-	TaskQueue(memory::pool_t *p = nullptr, StringView name = StringView(), std::function<void()> && = std::function<void()>());
-	TaskQueue(uint16_t count, memory::pool_t *p = nullptr, StringView name = StringView(), std::function<void()> && = std::function<void()>());
+	TaskQueue(StringView name = StringView(), std::function<void()> &&wakeup = std::function<void()>());
 	~TaskQueue();
 
 	void finalize();
 
 	void performAsync(Rc<Task> &&task);
-	void perform(Rc<Task> &&task);
-	void perform(Function<void()> &&, Ref * = nullptr);
-	void perform(Map<uint32_t, Vector<Rc<Task>>> &&tasks);
-	void performWithPriority(Rc<Task> &&task, bool performFirst);
+
+	void perform(Rc<Task> &&task, bool first = false);
+	void perform(Function<void()> &&, Ref * = nullptr, bool first = false);
+
+	bool perform(Map<uint32_t, Vector<Rc<Task>>> &&tasks);
 
 	void update();
 	void onMainThread(Rc<Task> &&task);
 
-	void wait(std::unique_lock<std::mutex> &);
-	bool spawnWorkers();
+	bool spawnWorkers(Flags);
 
 	// maxOf<uint32_t> - set id to next available
-	bool spawnWorkers(uint32_t threadId, StringView name);
-	void cancelWorkers();
+	bool spawnWorkers(Flags, uint32_t threadId, uint16_t threadCount, StringView name = StringView());
+	bool cancelWorkers();
 
-	void performAll();
-	void waitForAll(TimeInterval = TimeInterval::seconds(1));
+	void performAll(Flags flags);
+	bool waitForAll(TimeInterval = TimeInterval::seconds(1));
 
-	size_t getThreadsCount() const { return _threadsCount; }
 	StringView getName() const { return _name; }
 
 	StdVector<std::thread::id> getThreadIds() const;
 
-	size_t getOutputCounter() const { return outputCounter.load(); }
+	size_t getOutputCounter() const { return _outputCounter.load(); }
 
 protected:
 	friend class Worker;
@@ -86,30 +99,24 @@ protected:
 	Rc<Task> popTask(uint32_t idx);
 	void onMainThreadWorker(Rc<Task> &&task);
 
-	std::condition_variable_any _sleepCondition;
+	WorkerContext *_context = nullptr;
 
-	std::mutex _inputMutex;
-	StdVector<Rc<Task>> _inputQueue;
-	std::atomic<bool> _finalized;
+	std::mutex _inputMutexQueue;
+	std::mutex _inputMutexFree;
+	memory::PriorityQueue<Rc<Task>> _inputQueue;
 
 	std::mutex _outputMutex;
-	StdVector<Rc<Task>> _outputQueue;
+	std::vector<Rc<Task>> _outputQueue;
 
-	std::mutex _exitMutex;
-	std::condition_variable _exitCondition;
+	std::atomic<size_t> _outputCounter = 0;
+	std::atomic<size_t> _tasksCounter = 0;
 
-	StdVector<Worker *> _workers;
-
-	uint16_t _threadsCount = std::thread::hardware_concurrency();
-
-	std::atomic<size_t> outputCounter = 0;
-	std::atomic<size_t> tasksCounter = 0;
-
-	memory::pool_t *_pool = nullptr;
 	StringView _name = StringView("TaskQueue");
 
 	std::function<void()> _wakeup;
 };
+
+SP_DEFINE_ENUM_AS_MASK(TaskQueue::Flags)
 
 /* Interface for thread workers or handlers */
 class ThreadHandlerInterface : public Ref {

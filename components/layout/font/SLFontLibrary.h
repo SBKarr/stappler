@@ -123,6 +123,19 @@ protected:
 	FT_Library FTlibrary = nullptr;
 };
 
+struct EmplaceCharInterface {
+	uint16_t (*getX) (void *) = nullptr;
+	uint16_t (*getY) (void *) = nullptr;
+	uint16_t (*getWidth) (void *) = nullptr;
+	uint16_t (*getHeight) (void *) = nullptr;
+	void (*setX) (void *, uint16_t) = nullptr;
+	void (*setY) (void *, uint16_t) = nullptr;
+	void (*setTex) (void *, uint16_t) = nullptr;
+};
+
+Extent2 emplaceChars(const EmplaceCharInterface &, const SpanView<void *> &,
+		float totalSquare = std::numeric_limits<float>::quiet_NaN());
+
 NS_LAYOUT_END
 
 #endif /* LAYOUT_FONT_SLFONTLIBRARY_H_ */

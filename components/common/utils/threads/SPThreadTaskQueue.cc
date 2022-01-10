@@ -29,7 +29,18 @@ NS_SP_EXT_BEGIN(thread)
 
 class Worker : public ThreadHandlerInterface {
 public:
-	Worker(TaskQueue *queue, uint32_t threadId, uint32_t workerId, StringView name, memory::pool_t *p);
+	struct LocalQueue {
+		std::mutex mutexQueue;
+		std::mutex mutexFree;
+		memory::PriorityQueue<Rc<Task>> queue;
+
+		LocalQueue() {
+			queue.setFreeLocking(mutexFree);
+			queue.setQueueLocking(mutexQueue);
+		}
+	};
+
+	Worker(TaskQueue::WorkerContext *queue, uint32_t threadId, uint32_t workerId, StringView name);
 	virtual ~Worker();
 
 	uint64_t retain() override;
@@ -38,6 +49,7 @@ public:
 	bool execute(Task *task);
 
 	virtual void threadInit() override;
+	virtual void threadDispose() override;
 	virtual bool worker() override;
 
 	std::thread &getThread();
@@ -47,22 +59,124 @@ public:
 
 protected:
 	uint64_t _queueRefId = 0;
-	TaskQueue *_queue;
+	TaskQueue::WorkerContext *_queue = nullptr;
+	LocalQueue *_local = nullptr;
 	std::thread::id _threadId;
 	std::atomic<int32_t> _refCount;
 	std::atomic_flag _shouldQuit;
 
 	memory::PoolFlags _flags = memory::PoolFlags::None;
 	memory::pool_t *_pool = nullptr;
-	memory::pool_t *_rootPool = nullptr;
 
 	uint32_t _managerId;
 	uint32_t _workerId;
 	StringView _name;
 	std::thread _thread;
+};
 
-	std::mutex _localMutex;
-	StdVector<Rc<Task>> _localQueue;
+struct TaskQueue::WorkerContext {
+	struct ExitCondition {
+		std::mutex mutex;
+		std::condition_variable condition;
+	};
+
+	TaskQueue *queue;
+	Flags flags;
+
+	std::condition_variable_any *conditionAny = nullptr;
+	std::condition_variable *conditionGeneral = nullptr;
+	ExitCondition *exit = nullptr;
+
+	std::atomic<bool> finalized;
+
+	std::vector<Worker *> workers;
+
+	std::atomic<size_t> outputCounter = 0;
+	std::atomic<size_t> tasksCounter = 0;
+
+	WorkerContext(TaskQueue *queue, Flags flags) : queue(queue), flags(flags) {
+		finalized = false;
+
+		if ((flags & Flags::LocalQueue) != Flags::None) {
+			conditionAny = new std::condition_variable_any;
+		} else {
+			conditionGeneral = new std::condition_variable;
+		}
+
+		if ((flags & Flags::Cancelable) != Flags::None) {
+			exit = new ExitCondition;
+		}
+	}
+
+	~WorkerContext() {
+		if (conditionAny) { delete conditionAny; }
+		if (conditionGeneral) { delete conditionGeneral; }
+		if (exit) { delete exit; }
+	}
+
+	void wait(std::unique_lock<std::mutex> &lock) {
+		if (finalized.load() != true) {
+			if (conditionGeneral) {
+				conditionGeneral->wait(lock);
+			} else {
+				conditionAny->wait(lock);
+			}
+		}
+	}
+
+	void notify() {
+		if (conditionGeneral) {
+			conditionGeneral->notify_one();
+		} else {
+			conditionAny->notify_one();
+		}
+	}
+
+	void notifyAll() {
+		if (conditionGeneral) {
+			conditionGeneral->notify_all();
+		} else {
+			conditionAny->notify_all();
+		}
+	}
+
+	void notifyExit() {
+		if (exit) {
+			exit->condition.notify_one();
+		}
+	}
+
+	void finalize() {
+		finalized = true;
+		notifyAll();
+	}
+
+	void spawn(uint32_t threadId, uint32_t threadCount, StringView name) {
+		for (uint32_t i = 0; i < threadCount; i++) {
+			workers.push_back(new Worker(this, threadId, i, name.empty() ? queue->getName() : name));
+		}
+	}
+
+	void cancel() {
+		for (auto &it : workers) {
+			it->release(0);
+		}
+
+		notifyAll();
+
+		for (auto &it : workers) {
+			it->getThread().join();
+			delete it;
+		}
+
+		workers.clear();
+	}
+
+	void waitExit(TimeInterval iv) {
+		std::unique_lock<std::mutex> exitLock(exit->mutex);
+		exit->condition.wait_for(exitLock, std::chrono::microseconds(iv.toMicros()));
+		queue->update();
+	}
 };
 
 thread_local ThreadInfo tl_threadInfo;
@@ -111,8 +225,9 @@ void ThreadInfo::setThreadInfo(StringView name) {
 
 class _SingleTaskWorker : public ThreadHandlerInterface {
 public:
-	_SingleTaskWorker(const Rc<TaskQueue> &q, Rc<Task> &&task, memory::pool_t *p)
-	: _queue(q), _task(std::move(task)), _managerId(getNextThreadId()), _pool(p) { }
+	_SingleTaskWorker(const Rc<TaskQueue> &q, Rc<Task> &&task)
+	: _queue(q), _task(std::move(task)), _managerId(getNextThreadId()) { }
+
 	virtual ~_SingleTaskWorker() { }
 
 	bool execute(Task *task) {
@@ -129,7 +244,7 @@ public:
 	virtual bool worker() override {
 		if (_task) {
 			memory::pool::initialize();
-			auto pool = memory::pool::create(_pool);
+			auto pool = memory::pool::create();
 
 			memory::pool::push(pool);
 			auto ret = execute(_task);
@@ -152,7 +267,6 @@ protected:
 	Rc<TaskQueue> _queue;
 	Rc<Task> _task;
 	uint32_t _managerId;
-	memory::pool_t *_pool = nullptr;
 };
 
 thread_local const TaskQueue *tl_owner = nullptr;
@@ -166,15 +280,10 @@ const TaskQueue *TaskQueue::getOwner() {
 	return tl_owner;
 }
 
-TaskQueue::TaskQueue(memory::pool_t *p, StringView name, std::function<void()> &&cb)
-: _finalized(false), _pool(p), _wakeup(move(cb)) {
-	if (!name.empty()) {
-		_name = name;
-	}
-}
-
-TaskQueue::TaskQueue(uint16_t count, memory::pool_t *p, StringView name, std::function<void()> &&cb)
-: _finalized(false), _threadsCount(count), _pool(p), _wakeup(move(cb)) {
+TaskQueue::TaskQueue(StringView name, std::function<void()> &&wakeup)
+: _wakeup(move(wakeup)) {
+	_inputQueue.setQueueLocking(_inputMutexQueue);
+	_inputQueue.setFreeLocking(_inputMutexFree);
 	if (!name.empty()) {
 		_name = name;
 	}
@@ -183,40 +292,31 @@ TaskQueue::TaskQueue(uint16_t count, memory::pool_t *p, StringView name, std::fu
 TaskQueue::~TaskQueue() {
 	cancelWorkers();
 
-	_inputMutex.lock();
-	if (_inputQueue.size() > 0) {
-		for (auto &t : _inputQueue) {
-			t->setSuccessful(false);
-			t->onComplete();
-		}
-	}
-
+	_inputQueue.foreach([&] (memory::PriorityQueue<Rc<Task>>::PriorityType p, const Rc<Task> &t) {
+		t->setSuccessful(false);
+		t->onComplete();
+	});
 	_inputQueue.clear();
-	_inputMutex.unlock();
 
 	update();
 }
 
 void TaskQueue::finalize() {
-	_finalized = true;
-	_sleepCondition.notify_all();
+	if (_context) {
+		_context->finalize();
+	}
 }
 
 void TaskQueue::performAsync(Rc<Task> &&task) {
 	if (task) {
-		_SingleTaskWorker *worker = new _SingleTaskWorker(this, std::move(task), _pool);
+		_SingleTaskWorker *worker = new _SingleTaskWorker(this, std::move(task));
 		StdThread wThread(ThreadHandlerInterface::workerThread, worker, this);
 		wThread.detach();
 	}
 }
 
-void TaskQueue::perform(Rc<Task> &&task) {
+void TaskQueue::perform(Rc<Task> &&task, bool first) {
 	if (!task) {
-		return;
-	}
-
-	if (task->getPriority() != 0) {
-		performWithPriority(move(task), false);
 		return;
 	}
 
@@ -225,94 +325,57 @@ void TaskQueue::perform(Rc<Task> &&task) {
 		onMainThread(std::move(task));
 		return;
 	}
-	++ tasksCounter;
-	_inputMutex.lock();
-	_inputQueue.push_back(std::move(task));
-	_inputMutex.unlock();
 
-	_sleepCondition.notify_one();
+	++ _tasksCounter;
+	_inputQueue.push(task->getPriority().get(), first, std::move(task));
+	if (_context) {
+		_context->notify();
+	}
 }
 
-void TaskQueue::perform(Function<void()> &&cb, Ref *ref) {
-	Rc<Task>::create([fn = move(cb)] (const Task &) -> bool {
+void TaskQueue::perform(Function<void()> &&cb, Ref *ref, bool first) {
+	perform(Rc<Task>::create([fn = move(cb)] (const Task &) -> bool {
 		fn();
 		return true;
-	}, nullptr, ref);
+	}, nullptr, ref), first);
 }
 
-void TaskQueue::perform(Map<uint32_t, Vector<Rc<Task>>> &&tasks) {
+bool TaskQueue::perform(Map<uint32_t, Vector<Rc<Task>>> &&tasks) {
 	if (tasks.empty()) {
-		return;
+		return false;
+	}
+
+	if (!_context || (_context->flags & Flags::LocalQueue) == Flags::None) {
+		return false;
 	}
 
 	for (auto &it : tasks) {
-		if (it.first > _workers.size()) {
+		if (it.first > _context->workers.size()) {
 			continue;
 		}
 
-		Worker * w = _workers[it.first];
+		Worker * w = _context->workers[it.first];
 		for (Rc<Task> &t : it.second) {
 			if (!t->prepare()) {
 				t->setSuccessful(false);
 				onMainThread(std::move(t));
 			} else {
-				++ tasksCounter;
+				++ _tasksCounter;
 				w->perform(move(t));
 			}
 		}
 	}
 
-	_sleepCondition.notify_all();
-}
-
-void TaskQueue::performWithPriority(Rc<Task> &&task, bool performFirst) {
-	if (!task) {
-		return;
-	}
-
-	if (!task->prepare()) {
-		task->setSuccessful(false);
-		onMainThread(std::move(task));
-		return;
-	}
-
-	int p = task->getPriority();
-
-	++ tasksCounter;
-	_inputMutex.lock();
-	if (_inputQueue.size() == 0) {
-		_inputQueue.push_back(std::move(task));
-	} else {
-		bool inserted = false;
-		for (auto i = _inputQueue.begin(); i != _inputQueue.end(); i ++) {
-			auto t = *i;
-			auto tp = t->getPriority();
-			if ((tp < p) || (performFirst && tp <= p)) {
-				_inputQueue.insert(i, std::move(task));
-				inserted = true;
-				break;
-			}
-		}
-
-		if (!inserted) {
-			_inputQueue.push_back(std::move(task));
-		}
-	}
-	_inputMutex.unlock();
-
-	_sleepCondition.notify_one();
+	_context->notifyAll();
+	return true;
 }
 
 Rc<Task> TaskQueue::popTask(uint32_t idx) {
-	std::unique_lock<std::mutex> lock(_inputMutex);
-
-	if (0 != _inputQueue.size()) {
-		auto task = std::move(_inputQueue.front());
-		_inputQueue.erase(_inputQueue.begin());
-		return task;
-	}
-
-	return nullptr;
+	Rc<Task> ret;
+	_inputQueue.pop_direct([&] (memory::PriorityQueue<Rc<Task>>::PriorityType, Rc<Task> &&task) {
+		ret = move(task);
+	});
+	return ret;
 }
 
 void TaskQueue::update() {
@@ -320,7 +383,7 @@ void TaskQueue::update() {
 
 	StdVector<Rc<Task>> stack = std::move(_outputQueue);
 	_outputQueue.clear();
-	outputCounter.store(0);
+	_outputCounter.store(0);
 
 	_outputMutex.unlock();
 
@@ -340,21 +403,25 @@ void TaskQueue::onMainThread(Rc<Task> &&task) {
 
     _outputMutex.lock();
     _outputQueue.push_back(std::move(task));
-    ++ outputCounter;
+    ++ _outputCounter;
 	_outputMutex.unlock();
 
 	if (_wakeup) {
 		_wakeup();
 	}
 
-	if (tasksCounter.load() == 0) {
-		_exitCondition.notify_one();
+	if (_tasksCounter.load() == 0 && _context) {
+		_context->notifyExit();
 	}
 }
 
 StdVector<std::thread::id> TaskQueue::getThreadIds() const {
+	if (!_context) {
+		return StdVector<std::thread::id>();
+	}
+
 	StdVector<std::thread::id> ret;
-	for (Worker *it : _workers) {
+	for (Worker *it : _context->workers) {
 		ret.emplace_back(it->getThreadId());
 	}
 	return ret;
@@ -368,89 +435,86 @@ void TaskQueue::onMainThreadWorker(Rc<Task> &&task) {
 	if (!task->getCompleteTasks().empty()) {
 		_outputMutex.lock();
 		_outputQueue.push_back(std::move(task));
-	    ++ outputCounter;
+	    ++ _outputCounter;
 		_outputMutex.unlock();
 
 		if (_wakeup) {
 			_wakeup();
 		}
 
-		if (tasksCounter.fetch_sub(1) == 1) {
-			_exitCondition.notify_one();
+		if (_tasksCounter.fetch_sub(1) == 1 && _context) {
+			_context->notifyExit();
 		}
 	} else {
-		if (tasksCounter.fetch_sub(1) == 1) {
-			_exitCondition.notify_one();
+		if (_tasksCounter.fetch_sub(1) == 1 && _context) {
+			_context->notifyExit();
 		}
 	}
 }
 
-void TaskQueue::wait(std::unique_lock<std::mutex> &lock) {
-	if (_finalized.load() != true) {
-		_sleepCondition.wait(lock);
+bool TaskQueue::spawnWorkers(Flags flags) {
+	return spawnWorkers(flags, getNextThreadId(), uint16_t(std::thread::hardware_concurrency()), _name);
+}
+
+bool TaskQueue::spawnWorkers(Flags flags, uint32_t threadId, uint16_t threadCount, StringView name) {
+	if (_context) {
+		return false;
 	}
-}
 
-bool TaskQueue::spawnWorkers() {
-	return spawnWorkers(getNextThreadId(), _name);
-}
-
-bool TaskQueue::spawnWorkers(uint32_t threadId, StringView name) {
 	if (threadId == maxOf<uint32_t>()) {
 		threadId = getNextThreadId();
 	}
-	if (_workers.empty()) {
-		for (uint32_t i = 0; i < _threadsCount; i++) {
-			_workers.push_back(new Worker(this, threadId, i, name, _pool));
-		}
-	}
+
+	_context = new WorkerContext(this, flags);
+	_context->spawn(threadId, threadCount, name);
+
 	return true;
 }
 
-void TaskQueue::cancelWorkers() {
-	if (_workers.empty()) {
-		return;
+bool TaskQueue::cancelWorkers() {
+	if (_context) {
+		return false;
 	}
 
-	for (auto &it : _workers) {
-		it->release(0);
-	}
-
-	_sleepCondition.notify_all();
-
-	for (auto &it : _workers) {
-		it->getThread().join();
-		delete it;
-	}
-
-	_workers.clear();
-	_inputQueue.clear();
+	_context->cancel();
+	delete _context;
+	return true;
 }
 
-void TaskQueue::performAll() {
-	spawnWorkers();
+void TaskQueue::performAll(Flags flags) {
+	spawnWorkers(flags | Flags::Cancelable);
 	waitForAll();
 	cancelWorkers();
 }
 
-void TaskQueue::waitForAll(TimeInterval iv) {
-	update();
-	while (tasksCounter.load() != 0) {
-		std::unique_lock<std::mutex> exitLock(_exitMutex);
-		_exitCondition.wait_for(exitLock, std::chrono::microseconds(iv.toMicros()));
-		update();
+bool TaskQueue::waitForAll(TimeInterval iv) {
+	if (!_context || (_context->flags & Flags::Cancelable) == Flags::None) {
+		return false;
 	}
+
+	update();
+	while (_tasksCounter.load() != 0) {
+		_context->waitExit(iv);
+	}
+	return true;
 }
 
 
-Worker::Worker(TaskQueue *queue, uint32_t threadId, uint32_t workerId, StringView name, memory::pool_t *p)
-: _queue(queue), _refCount(1), _shouldQuit(), _rootPool(p), _managerId(threadId), _workerId(workerId), _name(name) {
-	_queueRefId = _queue->retain();
-	_thread = StdThread(ThreadHandlerInterface::workerThread, this, queue);
+Worker::Worker(TaskQueue::WorkerContext *queue, uint32_t threadId, uint32_t workerId, StringView name)
+: _queue(queue), _refCount(1), _shouldQuit(), _managerId(threadId), _workerId(workerId), _name(name) {
+	_queueRefId = _queue->queue->retain();
+	if ((queue->flags & TaskQueue::Flags::LocalQueue) != TaskQueue::Flags::None) {
+		_local = new LocalQueue;
+	}
+	_thread = StdThread(ThreadHandlerInterface::workerThread, this, queue->queue);
 }
 
 Worker::~Worker() {
-	_queue->release(_queueRefId);
+	_queue->queue->release(_queueRefId);
+	if (_local) {
+		delete _local;
+		_local = nullptr;
+	}
 }
 
 uint64_t Worker::retain() {
@@ -474,11 +538,7 @@ bool Worker::execute(Task *task) {
 
 void Worker::threadInit() {
 	memory::pool::initialize();
-	if (_rootPool) {
-		_pool = memory::pool::createTagged((memory::pool_t *)_rootPool, _name.data());
-	} else {
-		_pool = memory::pool::createTagged(_name.data(), _flags);
-	}
+	_pool = memory::pool::createTagged(_name.data(), _flags);
 
 	_shouldQuit.test_and_set();
 	_threadId = std::this_thread::get_id();
@@ -493,39 +553,45 @@ void Worker::threadInit() {
 #endif
 }
 
+void Worker::threadDispose() {
+	memory::pool::destroy(_pool);
+	memory::pool::terminate();
+}
+
 bool Worker::worker() {
 	if (!_shouldQuit.test_and_set()) {
-		memory::pool::destroy(_pool);
-		memory::pool::terminate();
 		return false;
 	} else {
 		memory::pool::clear(_pool);
 	}
 
 	Rc<Task> task;
-	do {
-		std::unique_lock<std::mutex> lock(_localMutex);
-		if (!_localQueue.empty()) {
-			task = std::move(_localQueue.front());
-			_localQueue.erase(_localQueue.begin());
-		}
-	} while (0);
-
-	if (!task) {
-		task = _queue->popTask(_workerId);
+	if (_local) {
+		_local->queue.pop_direct([&] (memory::PriorityQueue<Rc<Task>>::PriorityType, Rc<Task> &&task) {
+			task = move(task);
+		});
 	}
 
 	if (!task) {
-		std::unique_lock<std::mutex> lock(_localMutex);
-		if (!_localQueue.empty()) {
+		task = _queue->queue->popTask(_workerId);
+	}
+
+	if (!task) {
+		if (_local) {
+			std::unique_lock<std::mutex> lock(_local->mutexQueue);
+			if (!_local->queue.empty(lock)) {
+				return true;
+			}
+			_queue->wait(lock);
+		} else {
+			std::unique_lock<std::mutex> lock(_queue->queue->_inputMutexQueue);
+			_queue->wait(lock);
 			return true;
 		}
-		_queue->wait(lock);
-		return true;
 	}
 
 	task->setSuccessful(execute(task));
-	_queue->onMainThreadWorker(std::move(task));
+	_queue->queue->onMainThreadWorker(std::move(task));
 
 	return true;
 }
@@ -535,8 +601,10 @@ std::thread &Worker::getThread() {
 }
 
 void Worker::perform(Rc<Task> &&task) {
-	std::unique_lock<std::mutex> lock(_localMutex);
-	_localQueue.emplace_back(std::move(task));
+	if (_local) {
+		auto p = task->getPriority();
+		_local->queue.push(p.get(), false, move(task));
+	}
 }
 
 NS_SP_EXT_END(thread)

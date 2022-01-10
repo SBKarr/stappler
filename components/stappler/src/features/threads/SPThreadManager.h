@@ -42,12 +42,7 @@ public:
     TaskManager(TaskManager &&);
 	TaskManager &operator=(TaskManager &&);
 
-    virtual void perform(Rc<Task> &&task);
-    virtual void perform(Rc<Task> &&task, int tag);
-
-    virtual void performWithPriority(Rc<Task> &&task, bool performFirst);
-    virtual void performWithPriority(Rc<Task> &&task, bool performFirst, int priority);
-    virtual void performWithPriority(Rc<Task> &&task, bool performFirst, int priority, int tag);
+    virtual void perform(Rc<Task> &&task, bool first);
 
     void update();
 
@@ -92,10 +87,7 @@ public:
 	void perform(Rc<thread::Task> &&task);
 
 	/* Performs task in thread, identified by id */
-    uint32_t perform(Thread *thread, Rc<thread::Task> &&task);
-
-	/* Performs task in thread, identified by id */
-    uint32_t performWithPriority(Thread *thread, Rc<thread::Task> &&task, bool performFirst);
+    uint32_t perform(Thread *thread, Rc<thread::Task> &&task, bool first = false);
 
 	/*
 	 The "Single-threaded" mode allow you to perform async tasks on single thread.
