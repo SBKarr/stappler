@@ -137,6 +137,9 @@ struct Extent3 {
 	constexpr Extent3(const Extent3& other) = default;
 	Extent3& operator= (const Extent3& other) = default;
 
+	constexpr Extent3(const Extent2& other) : width(other.width), height(other.height), depth(1) { }
+	Extent3& operator= (const Extent2& other) { width = other.width; height = other.height; depth = 1; return *this; }
+
 	constexpr explicit Extent3(const Size3 &size) : width(size.width), height(size.height), depth(size.depth) { }
 	constexpr explicit Extent3(const Vec3 &point) : width(point.x), height(point.y), depth(point.z) { }
 

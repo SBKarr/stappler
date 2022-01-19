@@ -108,6 +108,7 @@ public:
 
 	// init with raw data
 	Bitmap(const uint8_t *, uint32_t width, uint32_t height, PixelFormat = PixelFormat::RGBA8888, Alpha = Alpha::Premultiplied, uint32_t stride = 0);
+	Bitmap(BytesView, uint32_t width, uint32_t height, PixelFormat = PixelFormat::RGBA8888, Alpha = Alpha::Premultiplied, uint32_t stride = 0);
 	Bitmap(const Bytes &, uint32_t width, uint32_t height, PixelFormat = PixelFormat::RGBA8888, Alpha = Alpha::Premultiplied, uint32_t stride = 0);
 	Bitmap(Bytes &&, uint32_t width, uint32_t height, PixelFormat = PixelFormat::RGBA8888, Alpha = Alpha::Premultiplied, uint32_t stride = 0);
 

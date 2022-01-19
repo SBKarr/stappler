@@ -440,8 +440,47 @@ static struct ColorIndexName {
 	{ 0xfb6cbb5a, 0xec }, { 0xfb7b3b8f, 0x65 }, { 0xfd10b1d4, 0x54 }, { 0xfd6e72c2, 0x68 }, { 0xfe7f9849, 0x0c }, { 0xfebd338d, 0x74 }, { 0xfece83ca, 0x46 }, { 0xff8a4ca5, 0x6b },
 };
 
+namespace fnv1 {
+// see https://en.wikipedia.org/wiki/Fowler%E2%80%93Noll%E2%80%93Vo_hash_function#FNV-1_hash
+// parameters from http://www.boost.org/doc/libs/1_38_0/libs/unordered/examples/fnv1.hpp
+
+constexpr uint32_t _fnv_offset_basis() { return uint32_t(2166136261llu); }
+constexpr uint32_t _fnv_prime() { return uint32_t(16777619llu); }
+
+constexpr uint32_t _fnv1(const uint8_t* ptr, size_t len) {
+	uint32_t hash = _fnv_offset_basis();
+	for (size_t i = 0; i < len; i++) {
+	     hash *= _fnv_prime();
+	     hash ^= ptr[i];
+	}
+	return hash;
+}
+
+constexpr uint32_t _fnv1Signed(const char* ptr, size_t len) {
+	uint32_t hash = _fnv_offset_basis();
+	for (size_t i = 0; i < len; i++) {
+	     hash *= _fnv_prime();
+	     if constexpr (std::numeric_limits<char>::is_signed) {
+		     if (ptr[i] >= 0) {
+			     hash ^= ptr[i];
+		     } else {
+		    	 hash ^= -ptr[i] + 127;
+		     }
+	     } else {
+		     hash ^= ptr[i];
+	     }
+	}
+	return hash;
+}
+
+constexpr uint32_t hash32(const char* str, size_t len) {
+    return _fnv1Signed(str, len);
+}
+
+}
+
 bool getColor(const StringView &str, uint32_t &color) {
-	auto h = hash::hash32(str.data(), str.size());
+	auto h = fnv1::hash32(str.data(), str.size());
 
 	auto it = std::lower_bound(&nameIndex[0], (&nameIndex[0]) + 256, h, [] (const ColorIndexName &l, const uint32_t &r) -> bool {
 		return l.hash < r;

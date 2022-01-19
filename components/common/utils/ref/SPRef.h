@@ -56,7 +56,7 @@ public:
 	virtual uint64_t retain();
 	virtual void release(uint64_t id);
 
-	void foreachBacktrace(const Function<void(uint64_t, Time, const std::vector<std::string> &)> &);
+	void foreachBacktrace(const Callback<void(uint64_t, Time, const std::vector<std::string> &)> &) const;
 
 #else
 	uint64_t retain() { _counter.increment(); return 0; }
@@ -87,15 +87,15 @@ void check(const Function<void(Ref *, Time)> &);
 size_t count();
 
 uint64_t getNextRefId();
-uint64_t retainBacktrace(RefBase<AtomicCounter, memory::StandartInterface> *);
-void releaseBacktrace(RefBase<AtomicCounter, memory::StandartInterface> *, uint64_t);
-void foreachBacktrace(RefBase<AtomicCounter, memory::StandartInterface> *,
-		const Function<void(uint64_t, Time, const std::vector<std::string> &)> &);
+uint64_t retainBacktrace(const RefBase<AtomicCounter, memory::StandartInterface> *);
+void releaseBacktrace(const RefBase<AtomicCounter, memory::StandartInterface> *, uint64_t);
+void foreachBacktrace(const RefBase<AtomicCounter, memory::StandartInterface> *,
+		const Callback<void(uint64_t, Time, const std::vector<std::string> &)> &);
 
-uint64_t retainBacktrace(RefBase<AtomicCounter, memory::PoolInterface> *);
-void releaseBacktrace(RefBase<AtomicCounter, memory::PoolInterface> *, uint64_t);
-void foreachBacktrace(RefBase<AtomicCounter, memory::PoolInterface> *,
-		const Function<void(uint64_t, Time, const std::vector<std::string> &)> &);
+uint64_t retainBacktrace(const RefBase<AtomicCounter, memory::PoolInterface> *);
+void releaseBacktrace(const RefBase<AtomicCounter, memory::PoolInterface> *, uint64_t);
+void foreachBacktrace(const RefBase<AtomicCounter, memory::PoolInterface> *,
+		const Callback<void(uint64_t, Time, const std::vector<std::string> &)> &);
 }
 
 
@@ -276,7 +276,7 @@ void RefBase<Counter, Interface>::release(uint64_t v) {
 }
 
 template <typename Counter, typename Interface>
-void RefBase<Counter, Interface>::foreachBacktrace(const Function<void(uint64_t, Time, const std::vector<std::string> &)> &cb) {
+void RefBase<Counter, Interface>::foreachBacktrace(const Callback<void(uint64_t, Time, const std::vector<std::string> &)> &cb) const {
 	memleak::foreachBacktrace(this, cb);
 }
 

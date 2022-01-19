@@ -95,8 +95,8 @@ struct BackraceInfo {
 	std::vector<std::string> backtrace;
 };
 
-static std::map<RefBase<AtomicCounter, memory::StandartInterface> *, std::map<uint64_t, BackraceInfo>> s_retainStdMap;
-static std::map<RefBase<AtomicCounter, memory::PoolInterface> *, std::map<uint64_t, BackraceInfo>> s_retainPoolMap;
+static std::map<const RefBase<AtomicCounter, memory::StandartInterface> *, std::map<uint64_t, BackraceInfo>> s_retainStdMap;
+static std::map<const RefBase<AtomicCounter, memory::PoolInterface> *, std::map<uint64_t, BackraceInfo>> s_retainPoolMap;
 
 void store(Ref *ptr, bool backtrace) {
 	s_mutex.lock();
@@ -127,7 +127,7 @@ uint64_t getNextRefId() {
 	return s_refId.fetch_add(1);
 }
 
-uint64_t retainBacktrace(RefBase<AtomicCounter, memory::StandartInterface> *ptr) {
+uint64_t retainBacktrace(const RefBase<AtomicCounter, memory::StandartInterface> *ptr) {
 	auto id = getNextRefId();
 	auto bt = getBacktrace();
 	s_mutex.lock();
@@ -146,7 +146,7 @@ uint64_t retainBacktrace(RefBase<AtomicCounter, memory::StandartInterface> *ptr)
 	return id;
 }
 
-void releaseBacktrace(RefBase<AtomicCounter, memory::StandartInterface> *ptr, uint64_t id) {
+void releaseBacktrace(const RefBase<AtomicCounter, memory::StandartInterface> *ptr, uint64_t id) {
 	if (!id) {
 		return;
 	}
@@ -167,8 +167,8 @@ void releaseBacktrace(RefBase<AtomicCounter, memory::StandartInterface> *ptr, ui
 	s_mutex.unlock();
 }
 
-void foreachBacktrace(RefBase<AtomicCounter, memory::StandartInterface> *ptr,
-		const Function<void(uint64_t, Time, const std::vector<std::string> &)> &cb) {
+void foreachBacktrace(const RefBase<AtomicCounter, memory::StandartInterface> *ptr,
+		const Callback<void(uint64_t, Time, const std::vector<std::string> &)> &cb) {
 	s_mutex.lock();
 
 	auto it = s_retainStdMap.find(ptr);
@@ -181,7 +181,7 @@ void foreachBacktrace(RefBase<AtomicCounter, memory::StandartInterface> *ptr,
 	s_mutex.unlock();
 }
 
-uint64_t retainBacktrace(RefBase<AtomicCounter, memory::PoolInterface> *ptr) {
+uint64_t retainBacktrace(const RefBase<AtomicCounter, memory::PoolInterface> *ptr) {
 	auto id = getNextRefId();
 	auto bt = getBacktrace();
 	s_mutex.lock();
@@ -200,7 +200,7 @@ uint64_t retainBacktrace(RefBase<AtomicCounter, memory::PoolInterface> *ptr) {
 	return id;
 }
 
-void releaseBacktrace(RefBase<AtomicCounter, memory::PoolInterface> *ptr, uint64_t id) {
+void releaseBacktrace(const RefBase<AtomicCounter, memory::PoolInterface> *ptr, uint64_t id) {
 	if (!id) {
 		return;
 	}
@@ -221,8 +221,8 @@ void releaseBacktrace(RefBase<AtomicCounter, memory::PoolInterface> *ptr, uint64
 	s_mutex.unlock();
 }
 
-void foreachBacktrace(RefBase<AtomicCounter, memory::PoolInterface> *ptr,
-		const Function<void(uint64_t, Time, const std::vector<std::string> &)> &cb) {
+void foreachBacktrace(const RefBase<AtomicCounter, memory::PoolInterface> *ptr,
+		const Callback<void(uint64_t, Time, const std::vector<std::string> &)> &cb) {
 	s_mutex.lock();
 
 	auto it = s_retainPoolMap.find(ptr);

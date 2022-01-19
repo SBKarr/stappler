@@ -241,6 +241,11 @@ Bitmap::Bitmap(const uint8_t *d, uint32_t width, uint32_t height, PixelFormat c,
 	SPASSERT(c != PixelFormat::Auto, "Bitmap: Format::Auto should not be used with Bitmap directly");
 }
 
+Bitmap::Bitmap(BytesView d, uint32_t width, uint32_t height, PixelFormat c, Alpha a, uint32_t stride)
+: _color(c), _alpha(a), _width(width), _height(height), _stride(max(stride, width * getBytesPerPixel(c))), _data(d.bytes()) {
+	SPASSERT(c != PixelFormat::Auto, "Bitmap: Format::Auto should not be used with Bitmap directly");
+}
+
 Bitmap::Bitmap(const Bytes &d, uint32_t width, uint32_t height, PixelFormat c, Alpha a, uint32_t stride)
 : _color(c), _alpha(a), _width(width), _height(height), _stride(max(stride, width * getBytesPerPixel(c))), _data(d) {
 	SPASSERT(c != PixelFormat::Auto, "Bitmap: Format::Auto should not be used with Bitmap directly");
