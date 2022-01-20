@@ -180,6 +180,14 @@ inline constexpr uint64_t hash64(const char* str, size_t len, uint64_t seed = 0)
     return xxh64::hash(str, len, seed);
 }
 
+inline constexpr size_t hashSize(const char* str, size_t len, uint64_t seed = 0) {
+	if constexpr (sizeof(size_t) == 4) {
+	    return xxh32::hash(str, len, seed);
+	} else {
+	    return xxh64::hash(str, len, seed);
+	}
+}
+
 }
 
 #endif /* COMPONENTS_COMMON_CORE_STRING_SPHASH_H_ */

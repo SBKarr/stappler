@@ -37,7 +37,7 @@ SERENITY_PRECOMPILED_HEADERS += \
 	components/stellator/serenity_api/Define.h \
 	components/common/core/SPCommon.h
 
-SERENITY_FLAGS := -DSPAPR -DSERENITY
+SERENITY_FLAGS := -DSPAPR -DSERENITY -g
 
 SERENITY_SRCS_OBJS += \
 	components/document/src/mmd/common/MMDEngine.scu.cpp \

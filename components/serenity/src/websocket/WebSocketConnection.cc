@@ -238,7 +238,6 @@ apr_status_t Connection::inputFilterFunc(ap_filter_t *f, apr_bucket_brigade *b,
 	/* read up to the amount they specified. */
 	if (mode == AP_MODE_READBYTES || mode == AP_MODE_SPECULATIVE) {
 		apr_bucket *e = APR_BRIGADE_FIRST(ctx->b);
-
 		rv = apr_bucket_read(e, &str, &len, block);
 
 		if (APR_STATUS_IS_EAGAIN(rv) && block == APR_NONBLOCK_READ) {
@@ -248,7 +247,9 @@ apr_status_t Connection::inputFilterFunc(ap_filter_t *f, apr_bucket_brigade *b,
 		} else if (rv != APR_SUCCESS) {
 			return rv;
 		} else if (block == APR_BLOCK_READ && len == 0) {
-			apr_bucket_delete(e);
+			if (e) {
+				apr_bucket_delete(e);
+			}
 
 			if (mode == AP_MODE_READBYTES) {
 				e = apr_bucket_eos_create(f->c->bucket_alloc);
