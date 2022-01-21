@@ -241,18 +241,24 @@ bool FrameReader::updateState() {
 			} else {
 				error = Error::UnknownOpcode;
 			}
+			messages::error("Websocket", "Invalid control flow", mem::Value(toInt(error)));
 			return false;
 		}
 
 		if (!frame.buffer.empty()) {
 			if (!isControlFrameType(type)) {
 				error = Error::InvalidSegment;
+				messages::error("Websocket", "Invalid segment", mem::Value(toInt(error)));
 				return false;
 			}
 		}
 
 		if (size > max) {
 			error = Error::InvalidSize;
+			messages::error("Websocket", "Too large query", mem::Value{{
+				pair("size", mem::Value(size)),
+				pair("max", mem::Value(max)),
+			}});
 			return false;
 		}
 
@@ -273,6 +279,10 @@ bool FrameReader::updateState() {
 		size = buffer.get<BytesViewNetwork>().readUnsigned16();
 		if (size > max) {
 			error = Error::InvalidSize;
+			messages::error("Websocket", "Too large query", mem::Value{{
+				pair("size", mem::Value(size)),
+				pair("max", mem::Value(max)),
+			}});
 			return false;
 		}
 		status = masked?Status::Mask:Status::Body;
@@ -283,6 +293,10 @@ bool FrameReader::updateState() {
 		size = buffer.get<BytesViewNetwork>().readUnsigned64();
 		if (size > max) {
 			error = Error::InvalidSize;
+			messages::error("Websocket", "Too large query", mem::Value{{
+				pair("size", mem::Value(size)),
+				pair("max", mem::Value(max)),
+			}});
 			return false;
 		}
 		status = masked?Status::Mask:Status::Body;
@@ -314,6 +328,10 @@ bool FrameReader::updateState() {
 		} else {
 			if (size + frame.block > max) {
 				error = Error::InvalidSize;
+				messages::error("Websocket", "Too large query", mem::Value{{
+					pair("size", mem::Value(size + frame.block)),
+					pair("max", mem::Value(max)),
+				}});
 				return false;
 			}
 			frame.buffer.resize(size + frame.block);
@@ -352,7 +370,7 @@ void FrameReader::popFrame() {
 void FrameReader::clear() {
 	frame.buffer.force_clear();
 	frame.buffer.clear();
-	apr_brigade_cleanup(tmpbb);
+	apr_brigade_destroy(tmpbb);
 	memory::pool::clear(pool); // clear frame-related data
 
 	// recreate cleared bb

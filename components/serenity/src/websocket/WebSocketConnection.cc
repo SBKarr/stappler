@@ -199,8 +199,8 @@ apr_status_t Connection::inputFilterFunc(ap_filter_t *f, apr_bucket_brigade *b,
 	Connection *conn = (Connection *)f->ctx;
 	NetworkReader *ctx = conn->_network;
 
-	const char *str;
-	apr_size_t len;
+	const char *str = nullptr;
+	apr_size_t len = 0;
 
 	if (mode == AP_MODE_INIT) {
 		return APR_SUCCESS;
@@ -238,7 +238,43 @@ apr_status_t Connection::inputFilterFunc(ap_filter_t *f, apr_bucket_brigade *b,
 	/* read up to the amount they specified. */
 	if (mode == AP_MODE_READBYTES || mode == AP_MODE_SPECULATIVE) {
 		apr_bucket *e = APR_BRIGADE_FIRST(ctx->b);
-		rv = apr_bucket_read(e, &str, &len, block);
+
+		if (e->type == &apr_bucket_type_socket) {
+			auto a = e;
+			auto socket = (apr_socket_t *)e->data;
+		    apr_interval_time_t timeout;
+		    if (block == APR_NONBLOCK_READ) {
+		        apr_socket_timeout_get(socket, &timeout);
+		        apr_socket_timeout_set(socket, 0);
+		    }
+
+		    if (len == 0) {
+		    	len = 8_KiB;
+		    }
+
+		    auto buf = (char *)::alloca(len);
+
+		    rv = apr_socket_recv(socket, buf, &len);
+
+		    if (block == APR_NONBLOCK_READ) {
+		        apr_socket_timeout_set(socket, timeout);
+		    }
+
+		    if (rv != APR_SUCCESS && rv != APR_EOF) {
+				// return rv;
+		    } else if (len > 0) {
+				a = apr_bucket_heap_make(a, buf, len, nullptr);
+				str = buf;
+				APR_BUCKET_INSERT_AFTER(a, apr_bucket_socket_create(socket, a->list));
+				rv = APR_SUCCESS;
+		    } else {
+				a = apr_bucket_immortal_make(a, "", 0);
+				str = (const char *)a->data;
+				rv = APR_SUCCESS;
+		    }
+		} else {
+			rv = apr_bucket_read(e, &str, &len, block);
+		}
 
 		if (APR_STATUS_IS_EAGAIN(rv) && block == APR_NONBLOCK_READ) {
 			/* getting EAGAIN for a blocking read is an error; for a
