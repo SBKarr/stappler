@@ -126,7 +126,6 @@ public:
 		return Self(buf, this->size());
 	}
 
-
 protected:
 	const Type *ptr = nullptr;
 	size_t len = 0;

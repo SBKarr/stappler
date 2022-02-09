@@ -162,6 +162,9 @@ struct TypeTraits {
 	template <typename K, typename V, typename Compare = std::less<>>
 	using map_type = std::map<K, V, Compare>;
 
+	template <typename K, typename V>
+	using unordered_map_type = std::unordered_map<K, V>;
+
 	template <class T>
 	using function_type = std::function<T>;
 
@@ -201,6 +204,9 @@ struct TypeTraits {
 
 	template <typename K, typename V, typename Compare = std::less<>>
 	using map_type = memory::map<K, V, Compare>;
+
+	template <typename K, typename V>
+	using unordered_map_type = std::unordered_map<K, V>;
 
 	template <class T>
 	using function_type = memory::function<T>;
@@ -251,6 +257,9 @@ using Function = toolkit::TypeTraits::function_type<T>;
 
 template <typename K, typename V, typename Compare = std::less<void>>
 using Map = toolkit::TypeTraits::map_type<K, V, Compare>;
+
+template <typename K, typename V>
+using HashMap = toolkit::TypeTraits::unordered_map_type<K, V>;
 
 template <typename T>
 using Callback = memory::callback<T>;

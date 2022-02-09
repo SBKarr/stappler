@@ -186,7 +186,7 @@ public:
 
 	/* Construct FontParameters struct from name, size and styling enums (FontStyle/FontWeight/FontStretch) */
 	template <typename ... Args>
-	static FontParameters getFontParameters(const String &family, uint8_t size, Args && ... args) {
+	static FontParameters getFontParameters(const String &family, FontSize size, Args && ... args) {
 		FontParameters p;
 		p.fontFamily = family;
 		p.fontSize = size;

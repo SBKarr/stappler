@@ -496,6 +496,7 @@ bool TaskQueue::waitForAll(TimeInterval iv) {
 	while (_tasksCounter.load() != 0) {
 		_context->waitExit(iv);
 	}
+	update();
 	return true;
 }
 

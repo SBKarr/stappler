@@ -1,4 +1,4 @@
-# Copyright (c) 2017 Roman Katuntsev <sbkarr@stappler.org>
+# Copyright (c) 2017-2022 Roman Katuntsev <sbkarr@stappler.org>
 # 
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -37,17 +37,24 @@ OSTYPE_PREBUILT_PATH := libs/android/$(ANDROID_ARCH)/lib
 OSTYPE_INCLUDE :=  libs/android/$(ANDROID_ARCH)/include
 
 OSTYPE_COMMON_LIBS_LIST := \
-	$(GLOBAL_ROOT)/$(OSTYPE_PREBUILT_PATH)/libcurl.a \
+	$(GLOBAL_ROOT)/$(OSTYPE_PREBUILT_PATH)/libgnutls.a \
+	$(GLOBAL_ROOT)/$(OSTYPE_PREBUILT_PATH)/libhogweed.a \
+	$(GLOBAL_ROOT)/$(OSTYPE_PREBUILT_PATH)/libnettle.a \
+	$(GLOBAL_ROOT)/$(OSTYPE_PREBUILT_PATH)/libgmp.a \
+	$(GLOBAL_ROOT)/$(OSTYPE_PREBUILT_PATH)/libidn2.a \
+	$(GLOBAL_ROOT)/$(OSTYPE_PREBUILT_PATH)/libunistring.a \
+	$(GLOBAL_ROOT)/$(OSTYPE_PREBUILT_PATH)/libngtcp2.a \
+	$(GLOBAL_ROOT)/$(OSTYPE_PREBUILT_PATH)/libngtcp2_crypto_gnutls.a \
+	$(GLOBAL_ROOT)/$(OSTYPE_PREBUILT_PATH)/libnghttp3.a \
 	$(GLOBAL_ROOT)/$(OSTYPE_PREBUILT_PATH)/libbrotlidec.a \
 	$(GLOBAL_ROOT)/$(OSTYPE_PREBUILT_PATH)/libbrotlienc.a \
 	$(GLOBAL_ROOT)/$(OSTYPE_PREBUILT_PATH)/libbrotlicommon.a \
-	$(GLOBAL_ROOT)/$(OSTYPE_PREBUILT_PATH)/libmbedtls.a \
-	$(GLOBAL_ROOT)/$(OSTYPE_PREBUILT_PATH)/libmbedx509.a \
-	$(GLOBAL_ROOT)/$(OSTYPE_PREBUILT_PATH)/libmbedcrypto.a \
-	$(GLOBAL_ROOT)/$(OSTYPE_PREBUILT_PATH)/libpng.a \
+	$(GLOBAL_ROOT)/$(OSTYPE_PREBUILT_PATH)/libpng16.a \
+	$(GLOBAL_ROOT)/$(OSTYPE_PREBUILT_PATH)/libgif.a \
 	$(GLOBAL_ROOT)/$(OSTYPE_PREBUILT_PATH)/libjpeg.a \
 	$(GLOBAL_ROOT)/$(OSTYPE_PREBUILT_PATH)/libwebp.a \
-	$(GLOBAL_ROOT)/$(OSTYPE_PREBUILT_PATH)/libidn2.a
+	$(GLOBAL_ROOT)/$(OSTYPE_PREBUILT_PATH)/libbacktrace.a\
+	$(GLOBAL_ROOT)/$(OSTYPE_PREBUILT_PATH)/libcurl.a
 
 OSTYPE_STAPPLER_LIBS_LIST := \
 	$(OSTYPE_COMMON_LIBS_LIST) \
@@ -58,14 +65,16 @@ OSTYPE_CFLAGS := -DANDROID -Wall -fPIC -DUSE_FILE32API --sysroot $(ANDROID_TOOLC
 OSTYPE_CPPFLAGS := -Wno-overloaded-virtual -Wno-gnu-string-literal-operator-template -frtti
 OSTYPE_GCHFLAGS := -x c++-header
 
-OSTYPE_COMMON_LIBS := \
-	-l:libcurl.a -l:libbrotlidec.a -l:libbrotlienc.a -l:libbrotlicommon.a \
-	-l:libmbedtls.a -l:libmbedx509.a -l:libmbedcrypto.a \
-	-l:libpng.a -l:libjpeg.a -l:libwebp.a -l:libidn2 -lz -lm -landroid -llog
+OSTYPE_COMMON_LIBS := -l:libcurl.a \
+	-l:libgnutls.a -l:libhogweed.a -l:libnettle.a -l:libgmp.a -l:libidn2.a -l:libunistring.a \
+	-l:libngtcp2.a -l:libngtcp2_crypto_gnutls.a -l:libnghttp3.a \
+	-l:libbrotlidec.a -l:libbrotlienc.a -l:libbrotlicommon.a \
+	-l:libpng16.a -l:libgif.a -l:libjpeg.a -l:libwebp.a \
+	-l:libbacktrace.a -lz -lm -landroid -llog
 
 OSTYPE_CLI_LIBS :=  $(OSTYPE_COMMON_LIBS) -l:libsqlite3.a
 
-OSTYPE_STAPPLER_LIBS := $(OSTYPE_CLI_LIBS) -l:libhyphen.a -l:libfreetype.a -lGLESv2 -lEGL
+OSTYPE_STAPPLER_LIBS := $(OSTYPE_CLI_LIBS) -l:libfreetype.a -lGLESv2 -lEGL
 
 OSTYPE_LDFLAGS := -Wl,-z,defs -rdynamic
 OSTYPE_EXEC_FLAGS := 

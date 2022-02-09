@@ -145,7 +145,7 @@ public:
 		bool operator != (const DescriptionStyle &) const;
 
 		template <typename ... Args>
-		static DescriptionStyle construct(const StringView &family, uint8_t size, Args && ... args) {
+		static DescriptionStyle construct(const StringView &family, FontSize size, Args && ... args) {
 			DescriptionStyle p;
 			p.font.fontFamily = family;
 			p.font.fontSize = size;

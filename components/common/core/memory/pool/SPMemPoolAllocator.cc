@@ -24,7 +24,6 @@ THE SOFTWARE.
 
 #if LINUX
 #include <sys/mman.h>
-#endif
 
 namespace stappler::mempool::base {
 
@@ -52,6 +51,25 @@ int sp_munmap(void *addr, size_t length) {
 }
 
 }
+#else
+
+namespace stappler::mempool::base {
+
+size_t get_mapped_regions_count() {
+	return 0;
+}
+
+void *sp_mmap(void *addr, size_t length, int prot, int flags, int fd, off_t offset) {
+	return nullptr;
+}
+
+int sp_munmap(void *addr, size_t length) {
+	return -1;
+}
+
+}
+
+#endif
 
 namespace stappler::mempool::custom {
 
