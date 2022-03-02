@@ -51,7 +51,7 @@ bool Scheme::initSchemes(const mem::Map<mem::StringView, const Scheme *> &scheme
 				}
 			} else if (fit.second.getType() == Type::FullTextView) {
 				auto slot = static_cast<const FieldFullTextView *>(fit.second.getSlot());
-				for (auto &req_it : slot->requires) {
+				for (auto &req_it : slot->requireFields) {
 					if (auto f = it.second->getField(req_it)) {
 						const_cast<Scheme *>(it.second)->fullTextFields.emplace(f);
 					}
@@ -1066,7 +1066,7 @@ void Scheme::processFullTextFields(mem::Value &patch, mem::Vector<mem::String> *
 						continue;
 					}
 				}
-				if (std::find(slot->requires.begin(), slot->requires.end(), p_it.first) != slot->requires.end()) {
+				if (std::find(slot->requireFields.begin(), slot->requireFields.end(), p_it.first) != slot->requireFields.end()) {
 					if (std::find(vec.begin(), vec.end(), slot) == vec.end()) {
 						vec.emplace_back(slot);
 					}
@@ -1123,9 +1123,9 @@ mem::Value Scheme::makeObjectForPatch(const Transaction &t, uint64_t oid, const 
 		if (it.second.getType() == Type::FullTextView) {
 			auto slot = it.second.getSlot<FieldFullTextView>();
 			for (auto &p_it : patch.asDict()) {
-				auto req_it = std::find(slot->requires.begin(), slot->requires.end(), p_it.first);
-				if (req_it != slot->requires.end()) {
-					for (auto &it : slot->requires) {
+				auto req_it = std::find(slot->requireFields.begin(), slot->requireFields.end(), p_it.first);
+				if (req_it != slot->requireFields.end()) {
+					for (auto &it : slot->requireFields) {
 						if (auto f = getField(it)) {
 							includeFields.emplace(f);
 						}
@@ -1341,7 +1341,7 @@ void Scheme::addView(const Scheme *s, const Field *f) {
 		auto viewScheme = views.back();
 
 		bool linked = false;
-		for (auto &it : view->requires) {
+		for (auto &it : view->requireFields) {
 			auto fit = fields.find(it);
 			if (fit != fields.end()) {
 				if (fit->second.getType() == Type::Object && !view->linkage && !linked) {

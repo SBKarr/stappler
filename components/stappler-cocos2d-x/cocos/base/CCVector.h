@@ -107,7 +107,7 @@ public:
     const_reverse_iterator crend() const { return _data.crend(); }
     
     /** Constructor. */
-    Vector<T>()
+    Vector()
     : _data()
     {
         static_assert(std::is_convertible<T, Ref*>::value, "Invalid Type for cocos2d::Vector<T>!");
@@ -117,7 +117,7 @@ public:
      * Constructor with a capacity. 
      * @param capacity Capacity of the Vector.
      */
-    explicit Vector<T>(ssize_t capacity)
+    explicit Vector(ssize_t capacity)
     : _data()
     {
         static_assert(std::is_convertible<T, Ref*>::value, "Invalid Type for cocos2d::Vector<T>!");
@@ -126,14 +126,14 @@ public:
     }
 
     /** Destructor. */
-    ~Vector<T>()
+    ~Vector()
     {
         CCLOGINFO("In the destructor of Vector.");
         clear();
     }
 
     /** Copy constructor. */
-    Vector<T>(const Vector<T>& other)
+    Vector(const Vector<T>& other)
     {
         static_assert(std::is_convertible<T, Ref*>::value, "Invalid Type for cocos2d::Vector<T>!");
         CCLOGINFO("In the copy constructor!");
@@ -142,7 +142,7 @@ public:
     }
     
     /** Constructor with std::move semantic. */
-    Vector<T>(Vector<T>&& other)
+    Vector(Vector<T>&& other)
     {
         static_assert(std::is_convertible<T, Ref*>::value, "Invalid Type for cocos2d::Vector<T>!");
         CCLOGINFO("In the move constructor of Vector!");

@@ -1076,7 +1076,7 @@ bool FieldResolver::readFields(const Worker::FieldCallback &cb, bool isSimpleGet
 		mem::Vector<const Field *> virtuals = getVirtuals();
 		for (auto &it : virtuals) {
 			auto slot = it->getSlot<FieldVirtual>();
-			for (auto &iit : slot->requires) {
+			for (auto &iit : slot->requireFields) {
 				if (auto f = scheme->getField(iit)) {
 					mem::emplace_ordered(requiredFields, f);
 				}

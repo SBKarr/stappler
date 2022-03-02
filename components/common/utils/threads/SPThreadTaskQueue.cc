@@ -103,7 +103,7 @@ struct TaskQueue::WorkerContext {
 			conditionGeneral = new std::condition_variable;
 		}
 
-		if ((flags & Flags::Cancelable) != Flags::None) {
+		if ((flags & Flags::Cancelable) != Flags::None || (flags & Flags::Waitable) != Flags::None) {
 			exit = new ExitCondition;
 		}
 	}
@@ -112,6 +112,10 @@ struct TaskQueue::WorkerContext {
 		if (conditionAny) { delete conditionAny; }
 		if (conditionGeneral) { delete conditionGeneral; }
 		if (exit) { delete exit; }
+	}
+
+	bool isWaitEnabled() const {
+		return (flags & Flags::Waitable) != Flags::None;
 	}
 
 	void wait(std::unique_lock<std::mutex> &lock) {
@@ -137,6 +141,12 @@ struct TaskQueue::WorkerContext {
 			conditionGeneral->notify_all();
 		} else {
 			conditionAny->notify_all();
+		}
+	}
+
+	void notifyWait() {
+		if (exit) {
+			exit->condition.notify_one();
 		}
 	}
 
@@ -176,6 +186,41 @@ struct TaskQueue::WorkerContext {
 		std::unique_lock<std::mutex> exitLock(exit->mutex);
 		exit->condition.wait_for(exitLock, std::chrono::microseconds(iv.toMicros()));
 		queue->update();
+	}
+
+	bool waitExternal(uint32_t *count) {
+		std::unique_lock<std::mutex> waitLock(exit->mutex);
+		exit->condition.wait(waitLock);
+		queue->update(count);
+		return true;
+	}
+
+	bool waitExternal(TimeInterval iv, uint32_t *count) {
+		std::unique_lock<std::mutex> waitLock(exit->mutex);
+		auto ret = exit->condition.wait_for(waitLock, std::chrono::microseconds(iv.toMicros()), [&] {
+			return queue->getOutputCounter() > 0;
+		});
+		if (!ret) {
+			if (count) {
+				*count = 0;
+			}
+			return false;
+		} else {
+			queue->update(count);
+			return true;
+		}
+	}
+
+	void lockExternal() {
+		if (exit) {
+			exit->mutex.lock();
+		}
+	}
+
+	void unlockExternal() {
+		if (exit) {
+			exit->mutex.unlock();
+		}
 	}
 };
 
@@ -287,6 +332,9 @@ TaskQueue::TaskQueue(StringView name, std::function<void()> &&wakeup)
 	if (!name.empty()) {
 		_name = name;
 	}
+
+	_outputQueue.reserve(2);
+	_outputCallbacks.reserve(2);
 }
 
 TaskQueue::~TaskQueue() {
@@ -378,21 +426,29 @@ Rc<Task> TaskQueue::popTask(uint32_t idx) {
 	return ret;
 }
 
-void TaskQueue::update() {
+void TaskQueue::update(uint32_t *count) {
     _outputMutex.lock();
 
-	StdVector<Rc<Task>> stack = std::move(_outputQueue);
+	auto stack = std::move(_outputQueue);
+	auto callbacks = std::move(_outputCallbacks);
+
 	_outputQueue.clear();
+	_outputCallbacks.clear();
+
 	_outputCounter.store(0);
 
 	_outputMutex.unlock();
 
-    if (stack.empty()) {
-        return;
-    }
-
-    for (auto task : stack) {
+	for (auto &task : stack) {
 		task->onComplete();
+	}
+
+	for (auto &task : callbacks) {
+		task.first();
+	}
+
+    if (count) {
+    	*count += stack.size() + callbacks.size();
     }
 }
 
@@ -406,11 +462,34 @@ void TaskQueue::onMainThread(Rc<Task> &&task) {
     ++ _outputCounter;
 	_outputMutex.unlock();
 
+	if (_context && _context->isWaitEnabled()) {
+		_context->notifyWait();
+	}
+
 	if (_wakeup) {
 		_wakeup();
 	}
 
-	if (_tasksCounter.load() == 0 && _context) {
+	if (_tasksCounter.load() == 0 && _context && !_context->isWaitEnabled()) {
+		_context->notifyExit();
+	}
+}
+
+void TaskQueue::onMainThread(Function<void()> &&func, Ref *target) {
+    _outputMutex.lock();
+    _outputCallbacks.emplace_back(std::move(func), target);
+    ++ _outputCounter;
+	_outputMutex.unlock();
+
+	if (_context && _context->isWaitEnabled()) {
+		_context->notifyWait();
+	}
+
+	if (_wakeup) {
+		_wakeup();
+	}
+
+	if (_tasksCounter.load() == 0 && _context && !_context->isWaitEnabled()) {
 		_context->notifyExit();
 	}
 }
@@ -438,15 +517,23 @@ void TaskQueue::onMainThreadWorker(Rc<Task> &&task) {
 	    ++ _outputCounter;
 		_outputMutex.unlock();
 
+		if (_context && _context->isWaitEnabled()) {
+			_context->notifyWait();
+		}
+
 		if (_wakeup) {
 			_wakeup();
 		}
 
-		if (_tasksCounter.fetch_sub(1) == 1 && _context) {
+		if (_tasksCounter.fetch_sub(1) == 1 && _context && !_context->isWaitEnabled()) {
 			_context->notifyExit();
 		}
 	} else {
-		if (_tasksCounter.fetch_sub(1) == 1 && _context) {
+		if (_context && _context->isWaitEnabled()) {
+			_context->notifyWait();
+		}
+
+		if (_tasksCounter.fetch_sub(1) == 1 && _context && !_context->isWaitEnabled()) {
 			_context->notifyExit();
 		}
 	}
@@ -496,8 +583,39 @@ bool TaskQueue::waitForAll(TimeInterval iv) {
 	while (_tasksCounter.load() != 0) {
 		_context->waitExit(iv);
 	}
-	update();
 	return true;
+}
+
+bool TaskQueue::wait(uint32_t *count) {
+	if (!_context || (_context->flags & Flags::Waitable) == Flags::None) {
+		return false;
+	}
+
+	return _context->waitExternal(count);
+}
+
+bool TaskQueue::wait(TimeInterval iv, uint32_t *count) {
+	if (!_context || (_context->flags & Flags::Waitable) == Flags::None) {
+		return false;
+	}
+
+	return _context->waitExternal(iv, count);
+}
+
+void TaskQueue::lock() {
+	if (!_context) {
+		return;
+	}
+
+	_context->lockExternal();
+}
+
+void TaskQueue::unlock() {
+	if (!_context) {
+		return;
+	}
+
+	_context->unlockExternal();
 }
 
 

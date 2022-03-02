@@ -293,7 +293,7 @@ struct AutoFieldScheme : mem::AllocBase {
 struct AutoFieldDef {
 	mem::Vector<AutoFieldScheme> schemes;
 	DefaultFn defaultFn;
-	mem::Vector<mem::String> requires; // fields to acquire from field's scheme object when defaultFn is called
+	mem::Vector<mem::String> requireFields; // fields to acquire from field's scheme object when defaultFn is called
 };
 
 // definition for scheme's unique constraints
@@ -563,7 +563,7 @@ struct FieldView : Field::Slot {
 	virtual bool transformValue(const Scheme &, const mem::Value &, mem::Value &, bool isCreate) const override { return false; }
 
 	const Scheme *scheme = nullptr;
-	mem::Vector<mem::String> requires;
+	mem::Vector<mem::String> requireFields;
 	ViewLinkageFn linkage;
 	ViewFn viewFn;
 	bool delta = false;
@@ -581,7 +581,7 @@ struct FieldFullTextView : Field::Slot {
 
 	mem::Vector<FullTextData> parseQuery(const mem::Value &) const;
 
-	mem::Vector<mem::String> requires;
+	mem::Vector<mem::String> requireFields;
 	FullTextViewFn viewFn;
 	FullTextQueryFn queryFn;
 };
@@ -619,7 +619,7 @@ struct FieldVirtual : Field::Slot {
 	virtual void hash(mem::StringStream &stream, ValidationLevel l) const override { }
 	virtual bool transformValue(const Scheme &, const mem::Value &, mem::Value &, bool isCreate) const override;
 
-	mem::Vector<mem::String> requires;
+	mem::Vector<mem::String> requireFields;
 	VirtualReadFn readFn;
 	VirtualWriteFn writeFn;
 };
@@ -856,13 +856,13 @@ template <> struct FieldOption<FieldArray, Type> {
 
 template <> struct FieldOption<FieldView, mem::Vector<mem::String>> {
 	static inline void assign(FieldView & f, mem::Vector<mem::String> && s) {
-		f.requires = std::move(s);
+		f.requireFields = std::move(s);
 	}
 };
 
 template <> struct FieldOption<FieldFullTextView, mem::Vector<mem::String>> {
 	static inline void assign(FieldFullTextView & f, mem::Vector<mem::String> && s) {
-		f.requires = std::move(s);
+		f.requireFields = std::move(s);
 	}
 };
 
@@ -900,7 +900,7 @@ template <typename F> struct FieldOption<F, FieldView::DeltaOptions> {
 
 template <> struct FieldOption<FieldVirtual, mem::Vector<mem::String>> {
 	static inline void assign(FieldVirtual & f, mem::Vector<mem::String> && s) {
-		f.requires = std::move(s);
+		f.requireFields = std::move(s);
 	}
 };
 

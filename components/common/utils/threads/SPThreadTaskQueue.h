@@ -50,13 +50,16 @@ public:
 		None = 0,
 
 		// allow to submit task for specific thread via `perform(Map<uint32_t, Vector<Rc<Task>>> &&)`
-		// it requires more additional space for internal local queues and less optimal thread scheduling
+		// it requires additional space for internal local queues and less optimal thread scheduling
 		// with `condition_variable_any` instead of `condition_variable`
 		LocalQueue = 1,
 
 		// allow queue to be externally cancelled with `performAll` and `waitForAll`
 		// it requires extra condition to track count of tasks executing
 		Cancelable = 2,
+
+		// allow to wait for event on queue's main thread via 'wait'
+		Waitable = 4,
 	};
 
 	struct WorkerContext;
@@ -75,8 +78,10 @@ public:
 
 	bool perform(Map<uint32_t, Vector<Rc<Task>>> &&tasks);
 
-	void update();
+	void update(uint32_t *count = nullptr);
+
 	void onMainThread(Rc<Task> &&task);
+	void onMainThread(Function<void()> &&func, Ref *target);
 
 	bool spawnWorkers(Flags);
 
@@ -86,6 +91,12 @@ public:
 
 	void performAll(Flags flags);
 	bool waitForAll(TimeInterval = TimeInterval::seconds(1));
+
+	bool wait(uint32_t *count = nullptr);
+	bool wait(TimeInterval, uint32_t *count = nullptr);
+
+	void lock();
+	void unlock();
 
 	StringView getName() const { return _name; }
 
@@ -107,6 +118,7 @@ protected:
 
 	std::mutex _outputMutex;
 	std::vector<Rc<Task>> _outputQueue;
+	std::vector<Pair<Function<void()>, Rc<Ref>>> _outputCallbacks;
 
 	std::atomic<size_t> _outputCounter = 0;
 	std::atomic<size_t> _tasksCounter = 0;

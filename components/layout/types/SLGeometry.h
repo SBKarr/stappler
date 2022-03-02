@@ -203,7 +203,22 @@ inline std::ostream & operator<<(std::ostream & stream, const Rect & obj) {
 }
 
 inline std::ostream & operator<<(std::ostream & stream, const Size2 & obj) {
-	stream << "Size(width:" << obj.width << " height:" << obj.height << ");";
+	stream << "Size2(width:" << obj.width << " height:" << obj.height << ");";
+	return stream;
+}
+
+inline std::ostream & operator<<(std::ostream & stream, const Size3 & obj) {
+	stream << "Size3(width:" << obj.width << " height:" << obj.height << " depth:" << obj.depth << ");";
+	return stream;
+}
+
+inline std::ostream & operator<<(std::ostream & stream, const Extent2 & obj) {
+	stream << "Extent2(width:" << obj.width << " height:" << obj.height << ");";
+	return stream;
+}
+
+inline std::ostream & operator<<(std::ostream & stream, const Extent3 & obj) {
+	stream << "Extent3(width:" << obj.width << " height:" << obj.height << " depth:" << obj.depth << ");";
 	return stream;
 }
 

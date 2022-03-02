@@ -312,10 +312,10 @@ TransactionStatus Adapter::getTransactionStatus() const {
 void Adapter::runAutoFields(const Transaction &t, const mem::Vector<uint64_t> &vec, const Scheme &scheme, const Field &field) {
 	auto &defs = field.getSlot()->autoField;
 	if (defs.defaultFn) {
-		auto includeSelf = (std::find(defs.requires.begin(), defs.requires.end(), field.getName()) == defs.requires.end());
+		auto includeSelf = (std::find(defs.requireFields.begin(), defs.requireFields.end(), field.getName()) == defs.requireFields.end());
 		for (auto &id : vec) {
 			Query q; q.select(id);
-			for (auto &req : defs.requires) {
+			for (auto &req : defs.requireFields) {
 				q.include(req);
 			}
 			if (includeSelf) {

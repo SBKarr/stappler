@@ -484,6 +484,10 @@ struct ValueWrapper {
 	inline ValueWrapper<T, Flag> operator++ (int) { ValueWrapper<T, Flag> result(*this); ++(*this); return result; }
 	inline ValueWrapper<T, Flag> operator-- (int) { ValueWrapper<T, Flag> result(*this); --(*this); return result; }
 
+#if __cpp_impl_three_way_comparison >= 201711
+	friend auto operator<=>(const ValueWrapper&, const ValueWrapper &) = default;
+#endif
+
 	T value;
 };
 

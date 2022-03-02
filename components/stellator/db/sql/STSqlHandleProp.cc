@@ -281,7 +281,7 @@ mem::Value SqlHandle::getSimpleField(Worker &w, SqlQuery &query, uint64_t oid, c
 	if (f.getType() == Type::Virtual) {
 		auto v = f.getSlot<FieldVirtual>();
 		auto sel = query.select("__oid");
-		for (auto &it : v->requires) {
+		for (auto &it : v->requireFields) {
 			sel.field(it);
 		}
 		sel.from(w.scheme().getName()).where("__oid", Comparation::Equal, oid).finalize();

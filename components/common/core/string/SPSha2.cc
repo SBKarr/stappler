@@ -366,8 +366,7 @@ Sha512::Buf Sha512::make(const CoderSource &source, const StringView &salt) {
 
 Sha512::Buf Sha512::hmac(const CoderSource &data, const CoderSource &key) {
 	Sha512::Buf ret;
-	std::array<uint8_t, SHA512_BLOCK_SIZE> keyData;
-	memset(keyData.data(), 0, keyData.size());
+	std::array<uint8_t, SHA512_BLOCK_SIZE> keyData = { 0 };
 
 	Sha512 shaCtx;
     if (key.size() > SHA512_BLOCK_SIZE) {
@@ -420,7 +419,7 @@ Sha256::Buf Sha256::make(const CoderSource &source, const StringView &salt) {
 
 Sha256::Buf Sha256::hmac(const CoderSource &data, const CoderSource &key) {
 	Sha256::Buf ret;
-	std::array<uint8_t, SHA256_BLOCK_SIZE> keyData;
+	std::array<uint8_t, SHA256_BLOCK_SIZE> keyData = { 0 };
 	memset(keyData.data(), 0, keyData.size());
 
 	Sha256 shaCtx;

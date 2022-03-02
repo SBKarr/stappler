@@ -248,9 +248,9 @@ mem::Value Field::getTypeDesc() const {
 				ret.setString(v->scheme->getName(), "scheme");
 			}
 
-			if (!v->requires.empty()) {
+			if (!v->requireFields.empty()) {
 				auto &f = ret.emplace("requires");
-				for (auto &it : v->requires) {
+				for (auto &it : v->requireFields) {
 					f.addString(it);
 				}
 			}
