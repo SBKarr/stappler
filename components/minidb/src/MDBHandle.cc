@@ -41,12 +41,37 @@ struct TransactionContext {
 	Handle *_handle = nullptr;
 };
 
-Handle::Handle(const Storage &storage, OpenMode mode) : _storage(&storage), _mode(mode) { }
+static std::atomic<uint64_t> s_handleId = 0;
 
-Handle::Handle(Transaction &t) : _storage(t.getStorage()), _mode(t.getMode()), _external(&t) { }
+Handle::~Handle() {
+	if (auto p = mem::pool::acquire()) {
+		if (stappler::memory::pool::get<db::Transaction::Data>(p, getTransactionKey())) {
+			stappler::memory::pool::store(p, nullptr, getTransactionKey());
+		}
+	}
+}
+
+Handle::Handle(const Storage &storage, OpenMode mode) : _storage(&storage), _mode(mode) {
+	_order = s_handleId.fetch_add(1);
+}
+
+Handle::Handle(Transaction &t) : _storage(t.getStorage()), _mode(t.getMode()), _external(&t) {
+	_order = s_handleId.fetch_add(1);
+}
 
 minidb::Transaction &Handle::getTransaction() {
 	return _external ? *_external : _transaction;
+}
+
+mem::String Handle::getTransactionKey() const {
+	mem::String ret;
+	auto name = _storage->getSourceName();
+	if (!name.empty()) {
+		ret = mem::toString(_order, ":minidb:", name, ":", (void *)_storage);
+	} else {
+		ret = mem::toString(_order, ":minidb:", (void *)_storage);
+	}
+	return ret;
 }
 
 bool Handle::init(const Config &serv, const mem::Map<mem::StringView, const Scheme *> &) {

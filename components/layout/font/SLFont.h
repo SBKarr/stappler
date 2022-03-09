@@ -38,6 +38,8 @@ using FontWeight = style::FontWeight;
 using FontStretch = style::FontStretch;
 using ReceiptCallback = Function<Bytes(const FontSource *, const String &)>;
 
+using FontLayoutId = ValueWrapper<uint16_t, class FontLayoutIdTag>;
+
 struct Metrics final {
 	uint16_t size = 0; // font size in pixels
 	uint16_t height = 0; // default font line height
@@ -60,6 +62,7 @@ struct CharSpec final {
 	char16_t charID = 0;
 	int16_t pos = 0;
 	uint16_t advance = 0;
+	uint16_t face = 0;
 };
 
 struct CharTexture final {
@@ -109,6 +112,8 @@ struct FontData final : public Ref {
 	uint16_t xAdvance(char16_t c) const;
 	int16_t kerningAmount(char16_t first, char16_t second) const;
 
+	const Metrics &getMetrics() const;
+
 	Metrics metrics;
 	Vector<CharLayout> chars;
 	Map<uint32_t, int16_t> kerning;
@@ -133,13 +138,13 @@ public:
 	/* addString functions will update layout data from its font face
 	 * this call may be very expensive */
 
-	void addString(const String &);
-	void addString(const WideString &);
-	void addString(const char16_t *, size_t);
+	bool addString(const String &);
+	bool addString(const WideString &);
+	bool addString(const char16_t *, size_t);
 
-	void addString(const FontCharString &);
+	bool addString(const FontCharString &);
 
-	void addSortedChars(const Vector<char16_t> &); // should be sorted vector
+	bool addSortedChars(const Vector<char16_t> &); // should be sorted vector
 
 	Rc<FontData> getData();
 
@@ -153,7 +158,7 @@ public:
 	FontParameters getStyle() const;
 
 protected:
-	void merge(const Vector<char16_t> &);
+	bool merge(const Vector<char16_t> &);
 
 	String _name;
 	String _family;
@@ -216,16 +221,16 @@ public:
 	float getFontScale() const;
 	void update();
 
-	String getFamilyName(uint32_t id) const;
+	StringView getFamilyName(uint32_t id) const;
 
 	void addTextureString(const String &, const String &);
 	void addTextureString(const String &, const WideString &);
 	void addTextureString(const String &, const char16_t *, size_t);
 
-	const Vector<char16_t> & addTextureChars(const String &, const Vector<CharSpec> &);
-	const Vector<char16_t> & addTextureChars(const String &, const Vector<CharSpec> &, uint32_t start, uint32_t count);
+	const Vector<char16_t> & addTextureChars(StringView, const Vector<CharSpec> &);
+	const Vector<char16_t> & addTextureChars(StringView, const Vector<CharSpec> &, uint32_t start, uint32_t count);
 
-	Vector<char16_t> &getTextureLayout(const String &);
+	Vector<char16_t> &getTextureLayout(StringView);
 	const Map<String, Vector<char16_t>> &getTextureLayoutMap() const;
 
 	uint32_t getVersion() const;
@@ -237,6 +242,8 @@ public:
 	const SearchDirs &getSearchDirs() const;
 
 	void preloadChars(const FontParameters &, const Vector<char16_t> &);
+
+	float getDensity() const { return _density; }
 
 protected:
 	Rc<FontLayout> getLayout(const FontLayout *); // returns persistent ptr, Layout will be created if needed
@@ -285,6 +292,47 @@ protected:
 	std::atomic<uint32_t> _version;
 	SearchDirs _searchDirs;
 	bool _scheduled = false;
+};
+
+class FormatterSourceInterface : public Ref {
+public:
+	virtual ~FormatterSourceInterface() { }
+
+	virtual FontLayoutId getLayout(const FontParameters &f, float scale) = 0;
+	virtual void addString(FontLayoutId, const FontCharString &) = 0;
+	virtual uint16_t getFontHeight(FontLayoutId) = 0;
+	virtual int16_t getKerningAmount(FontLayoutId, char16_t first, char16_t second) const = 0;
+	virtual Metrics getMetrics(FontLayoutId) = 0;
+	virtual CharLayout getChar(FontLayoutId, char16_t, uint16_t &face) = 0;
+	virtual StringView getFontName(FontLayoutId) = 0;
+	virtual Rc<FontData> getData(FontLayoutId) = 0;
+};
+
+class FormatterFontSource : public FormatterSourceInterface {
+public:
+	virtual ~FormatterFontSource() { }
+
+	FormatterFontSource(Rc<FontSource> &&);
+
+	virtual FontLayoutId getLayout(const FontParameters &f, float scale) override;
+	virtual void addString(FontLayoutId, const FontCharString &) override;
+	virtual uint16_t getFontHeight(FontLayoutId) override;
+	virtual int16_t getKerningAmount(FontLayoutId, char16_t first, char16_t second) const override;
+	virtual Metrics getMetrics(FontLayoutId) override;
+	virtual CharLayout getChar(FontLayoutId, char16_t, uint16_t &) override;
+	virtual StringView getFontName(FontLayoutId) override;
+	virtual Rc<FontData> getData(FontLayoutId) override;
+
+protected:
+	struct LayoutData {
+		uint16_t id;
+		Rc<FontLayout> layout;
+		Rc<FontData> data;
+	};
+
+	uint16_t _nextId = 0;
+	Rc<FontSource> _source;
+	std::unordered_map<uint16_t, LayoutData> _layouts;
 };
 
 inline bool operator< (const CharTexture &t, const CharTexture &c) { return t.charID < c.charID; }

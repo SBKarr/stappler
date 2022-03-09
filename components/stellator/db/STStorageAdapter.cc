@@ -42,6 +42,11 @@ mem::String Adapter::getTransactionKey() const {
 		return mem::String();
 	}
 
+	auto ret = _interface->getTransactionKey();
+	if (!ret.empty()) {
+		return ret;
+	}
+
 	char buf[32] = { 0 };
 	auto prefix = mem::StringView(config::getTransactionPrefixKey());
 	memcpy(buf, prefix.data(), prefix.size());

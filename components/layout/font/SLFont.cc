@@ -101,6 +101,10 @@ int16_t FontData::kerningAmount(char16_t first, char16_t second) const {
 	return 0;
 }
 
+const Metrics &FontData::getMetrics() const {
+	return metrics;
+}
+
 bool FontLayout::init(const FontSource * source, const String &name, const StringView &family, FontSize size, const FontFace &face,
 		const ReceiptCallback &cb, const MetricCallback &mcb, const UpdateCallback &ucb) {
 	_name = name;
@@ -120,13 +124,13 @@ bool FontLayout::init(const FontSource * source, const String &name, const Strin
 
 FontLayout::~FontLayout() { }
 
-void FontLayout::addString(const String &str) {
-	addString(string::toUtf16(str));
+bool FontLayout::addString(const String &str) {
+	return addString(string::toUtf16(str));
 }
-void FontLayout::addString(const WideString &str) {
-	addString(str.data(), str.size());
+bool FontLayout::addString(const WideString &str) {
+	return addString(str.data(), str.size());
 }
-void FontLayout::addString(const char16_t *str, size_t len) {
+bool FontLayout::addString(const char16_t *str, size_t len) {
 	Vector<char16_t> chars;
 	for (size_t i = 0; i < len; ++ i) {
 		const char16_t &c = str[i];
@@ -136,18 +140,20 @@ void FontLayout::addString(const char16_t *str, size_t len) {
 		}
 	}
 
-	merge(chars);
+	return merge(chars);
 }
-void FontLayout::addString(const FontCharString &str) {
-	merge(str.chars);
-}
-
-void FontLayout::addSortedChars(const Vector<char16_t> &vec) {
-	merge(vec);
+bool FontLayout::addString(const FontCharString &str) {
+	return merge(str.chars);
 }
 
-void FontLayout::merge(const Vector<char16_t> &chars) {
+bool FontLayout::addSortedChars(const Vector<char16_t> &vec) {
+	return merge(vec);
+}
+
+bool FontLayout::merge(const Vector<char16_t> &chars) {
 	Rc<FontData> data(getData());
+
+	bool success = false;
 	while (true) {
 		Vector<char16_t> charsToUpdate; charsToUpdate.reserve(chars.size());
 		for (auto &it : chars) {
@@ -156,28 +162,26 @@ void FontLayout::merge(const Vector<char16_t> &chars) {
 			}
 		}
 		if (charsToUpdate.empty()) {
-			return;
+			return success;
 		}
 
+		success = true;
+
 		Rc<FontData> newData(_updateCallback(_source, _face.src, data, charsToUpdate, _callback));
-		_mutex.lock();
+		std::unique_lock<Mutex> lock(_mutex);
 		if (_data == data) {
 			_data = newData;
-			_mutex.unlock();
-			return;
+			return success;
 		} else {
 			data = _data;
 		}
-		_mutex.unlock();
 	}
+	return success;
 }
 
 Rc<FontData> FontLayout::getData() {
-	Rc<FontData> ret;
-	_mutex.lock();
-	ret = _data;
-	_mutex.unlock();
-	return ret;
+	std::unique_lock<Mutex> lock(_mutex);
+	return _data;
 }
 
 const String &FontLayout::getName() const {
@@ -425,12 +429,12 @@ void FontSource::update() {
 	}
 }
 
-String FontSource::getFamilyName(uint32_t id) const {
+StringView FontSource::getFamilyName(uint32_t id) const {
 	auto it = _families.find(id);
 	if (it != _families.end()) {
 		return it->second;
 	}
-	return String();
+	return StringView();
 }
 
 void FontSource::addTextureString(const String &layout, const String &str) {
@@ -451,7 +455,7 @@ void FontSource::addTextureString(const String &layout, const char16_t *str, siz
 	}
 }
 
-const Vector<char16_t> & FontSource::addTextureChars(const String &layout, const Vector<CharSpec> &l) {
+const Vector<char16_t> & FontSource::addTextureChars(StringView layout, const Vector<CharSpec> &l) {
 	auto &vec = getTextureLayout(layout);
 	for (auto &it : l) {
 		const char16_t &c = it.charID;
@@ -464,7 +468,7 @@ const Vector<char16_t> & FontSource::addTextureChars(const String &layout, const
 	return vec;
 }
 
-const Vector<char16_t> & FontSource::addTextureChars(const String &layout, const Vector<CharSpec> &l, uint32_t start, uint32_t count) {
+const Vector<char16_t> & FontSource::addTextureChars(StringView layout, const Vector<CharSpec> &l, uint32_t start, uint32_t count) {
 	auto &vec = getTextureLayout(layout);
 	const uint32_t end = start + count;
 	for (uint32_t i = start; i < end; ++ i) {
@@ -478,10 +482,10 @@ const Vector<char16_t> & FontSource::addTextureChars(const String &layout, const
 	return vec;
 }
 
-Vector<char16_t> &FontSource::getTextureLayout(const String &layout) {
+Vector<char16_t> &FontSource::getTextureLayout(StringView layout) {
 	auto it = _textureLayouts.find(layout);
 	if (it == _textureLayouts.end()) {
-		it = _textureLayouts.emplace(layout, Vector<char16_t>()).first;
+		it = _textureLayouts.emplace(layout.str(), Vector<char16_t>()).first;
 		it->second.reserve(128);
 	}
 	return it->second;
@@ -528,6 +532,84 @@ void FontSource::mergeFontFace(FontFaceMap &target, const FontFaceMap &map) {
 			}
 		}
 	}
+}
+
+FormatterFontSource::FormatterFontSource(Rc<FontSource> &&s) : _source(move(s)) { }
+
+FontLayoutId FormatterFontSource::getLayout(const FontParameters &f, float scale) {
+	auto l = _source->getLayout(f, scale);
+	auto id = _nextId;
+	++ _nextId;
+
+	_layouts.emplace(id, LayoutData{id, l, l->getData()});
+	return FontLayoutId(id);
+}
+
+void FormatterFontSource::addString(FontLayoutId id, const FontCharString &str) {
+	auto l = _layouts.find(id.get());
+	if (l == _layouts.end()) {
+		return;
+	}
+
+	if (l->second.layout->addString(str)) {
+		l->second.data = l->second.layout->getData();
+	}
+}
+
+uint16_t FormatterFontSource::getFontHeight(FontLayoutId id) {
+	auto l = _layouts.find(id.get());
+	if (l == _layouts.end()) {
+		return 0;
+	}
+
+	return l->second.data->getHeight();
+}
+
+int16_t FormatterFontSource::getKerningAmount(FontLayoutId id, char16_t first, char16_t second) const {
+	auto l = _layouts.find(id.get());
+	if (l == _layouts.end()) {
+		return 0;
+	}
+
+	return l->second.data->kerningAmount(first, second);
+}
+
+Metrics FormatterFontSource::getMetrics(FontLayoutId id) {
+	auto l = _layouts.find(id.get());
+	if (l == _layouts.end()) {
+		return Metrics();
+	}
+
+	return l->second.data->getMetrics();
+}
+
+CharLayout FormatterFontSource::getChar(FontLayoutId id, char16_t ch, uint16_t &face) {
+	auto l = _layouts.find(id.get());
+	if (l == _layouts.end()) {
+		face = 0;
+		return CharLayout();
+	}
+
+	face = 0;
+	return l->second.data->getChar(ch);
+}
+
+StringView FormatterFontSource::getFontName(FontLayoutId id) {
+	auto l = _layouts.find(id.get());
+	if (l == _layouts.end()) {
+		return StringView();
+	}
+
+	return l->second.layout->getName();
+}
+
+Rc<FontData> FormatterFontSource::getData(FontLayoutId id) {
+	auto l = _layouts.find(id.get());
+	if (l == _layouts.end()) {
+		return nullptr;
+	}
+
+	return l->second.data;
 }
 
 NS_LAYOUT_END

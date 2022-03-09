@@ -46,7 +46,7 @@ struct LineSpec { // 12 bytes
 	uint16_t height = 0;
 };
 
-struct RangeSpec { // 32 bytes
+struct RangeSpec {
 	bool colorDirty = false;
 	bool opacityDirty = false;
 	TextDecoration decoration = TextDecoration::None;
@@ -58,7 +58,8 @@ struct RangeSpec { // 32 bytes
 	Color4B color;
 	uint16_t height = 0;
 
-	Rc<FontLayout> layout;
+	Metrics metrics;
+	FontLayoutId layout;
 };
 
 class FormatSpec : public Ref {
@@ -109,13 +110,16 @@ public:
 	uint16_t maxLineX = 0;
 	bool overflow = false;
 
-	FormatSpec();
-	explicit FormatSpec(size_t);
-	FormatSpec(size_t, size_t);
+	Rc<FormatterSourceInterface> source;
 
-	bool init(size_t, size_t = 1);
+	FormatSpec(Rc<FormatterSourceInterface> && = nullptr);
+	FormatSpec(Rc<FormatterSourceInterface> &&, size_t);
+	FormatSpec(Rc<FormatterSourceInterface> &&, size_t, size_t);
+
 	void reserve(size_t, size_t = 1);
 	void clear();
+
+	void setSource(Rc<FormatterSourceInterface> &&);
 
 	enum SelectMode {
 		Center,
@@ -175,10 +179,10 @@ public:
 public:
 	Formatter();
 
-	// You MUST ensure that source and output exists until formatter is finalized
-	Formatter(FontSource *, FormatSpec *, float density = 1.0f);
+	// You MUST ensure that output exists until formatter is finalized
+	Formatter(FormatSpec *, float density = 1.0f);
 
-	void init(FontSource *, FormatSpec *, float density = 1.0f);
+	void init(FormatSpec *, float density = 1.0f);
 
 	void setLinePositionCallback(const LinePositionCallback &);
 	void setWidth(uint16_t width);
@@ -202,7 +206,7 @@ public:
 
 	void finalize();
 	void reset(FormatSpec *);
-	void reset(FontSource *, FormatSpec *, float density = 1.0f);
+	void reset(FormatSpec *, float density);
 
 	uint16_t getHeight() const;
 	uint16_t getWidth() const;
@@ -221,7 +225,7 @@ protected:
 	void parseFontLineHeight(uint16_t);
 	bool updatePosition(uint16_t &linePos, uint16_t &lineHeight);
 
-	Rc<FontLayout> getLayout(uint16_t pos) const;
+	FontLayoutId getLayout(uint16_t pos) const;
 
 	uint16_t getAdvance(const CharSpec &c) const;
 	uint16_t getAdvance(uint16_t pos) const;
@@ -233,8 +237,6 @@ protected:
 
 	inline uint16_t getOriginPosition(const CharSpec &c) const;
 	inline uint16_t getOriginPosition(uint16_t pos) const;
-
-	void clearRead();
 
 	bool readWithRange(RangeSpec &&, const TextParameters &s, const char16_t *str, size_t len, uint16_t front = 0, uint16_t back = 0);
 	bool readWithRange(RangeSpec &&, const TextParameters &s, uint16_t width, uint16_t height);
@@ -251,7 +253,6 @@ protected:
 
 	void updateLineHeight(uint16_t first, uint16_t last);
 
-	FontSource *  source = nullptr;
 	FormatSpec *  output = nullptr;
 	HyphenMap * _hyphens = nullptr;
 
@@ -260,8 +261,7 @@ protected:
 	float density = 1.0f;
 	float fontScale = nan();
 
-	Rc<FontLayout> primaryFont;
-	Rc<FontData> primaryData;
+	FontLayoutId primaryFontId;
 
 	TextParameters textStyle;
 

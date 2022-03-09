@@ -127,6 +127,9 @@ struct TypeTraits {
 	template <typename K, typename V, typename Compare = std::less<>>
 	using map_type = memory::map<K, V, Compare>;
 
+	template <typename K, typename V>
+	using unordered_map_type = std::unordered_map<K, V>;
+
 	template <class T>
 	using function_type = memory::function<T>;
 

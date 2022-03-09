@@ -126,6 +126,14 @@ public:
 		return Self(buf, this->size());
 	}
 
+	size_t hash() const {
+		if constexpr (sizeof(size_t) == 4) {
+			return hash::hash32((const char *)data(), size() * sizeof(_Type));
+		} else {
+			return hash::hash64((const char *)data(), size() * sizeof(_Type));
+		}
+	}
+
 protected:
 	const Type *ptr = nullptr;
 	size_t len = 0;
@@ -173,6 +181,17 @@ template <typename Type>
 auto makeSpanView(const Type *ptr, size_t size) -> SpanView<Type> {
 	return SpanView<Type>(ptr, size);
 }
+
+}
+
+namespace std {
+
+template<typename Value>
+struct hash<stappler::SpanView<Value>> {
+	size_t operator() (const stappler::SpanView<Value> &value) {
+		return value.hash();
+	}
+};
 
 }
 

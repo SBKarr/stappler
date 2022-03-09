@@ -31,13 +31,15 @@ THE SOFTWARE.
 
 NS_LAYOUT_BEGIN
 
-Formatter::Formatter(): source(nullptr), output(nullptr), density(1.0f) { }
+static FontLayoutId FontLayoutIdInvalid(maxOf<uint16_t>());
 
-Formatter::Formatter(FontSource *s, FormatSpec *o, float density)
-: source(s), output(o), density(density) { }
+Formatter::Formatter() : output(nullptr), density(1.0f) { }
 
-void Formatter::init(FontSource *s, FormatSpec *o, float d) {
-	reset(s, o, d);
+Formatter::Formatter(FormatSpec *o, float density)
+: output(o), density(density) { }
+
+void Formatter::init(FormatSpec *o, float d) {
+	reset(o, d);
 }
 
 void Formatter::setLinePositionCallback(const LinePositionCallback &func) {
@@ -161,7 +163,7 @@ bool Formatter::updatePosition(uint16_t &linePos, uint16_t &height) {
 		uint16_t maxHeight = lineHeight * 16;
 		uint16_t extraHeight = 0;
 
-		while (width < primaryData->getHeight() && extraHeight < maxHeight) {
+		while (width < output->source->getFontHeight(primaryFontId) && extraHeight < maxHeight) {
 			extraHeight += lineHeight;
 			linePos += lineHeight;
 			std::tie(lineOffset, width) = linePositionFunc(linePos, height, density);
@@ -175,13 +177,13 @@ bool Formatter::updatePosition(uint16_t &linePos, uint16_t &height) {
 	return true;
 }
 
-Rc<FontLayout> Formatter::getLayout(uint16_t pos) const {
+FontLayoutId Formatter::getLayout(uint16_t pos) const {
 	for (const RangeSpec &it : output->ranges) {
 		if (pos >= it.start && pos < it.start + it.count) {
 			return it.layout;
 		}
 	}
-	return primaryFont;
+	return primaryFontId;
 }
 
 uint16_t Formatter::getAdvance(const CharSpec &ch) const {
@@ -246,7 +248,8 @@ void Formatter::pushLineFiller(bool replaceLastChar) {
 	if (_fillerChar == 0) {
 		return;
 	}
-	auto charDef = primaryData->getChar(_fillerChar);
+	uint16_t faceId = 0;
+	auto charDef = output->source->getChar(primaryFontId, _fillerChar, faceId);
 	if (!charDef) {
 		return;
 	}
@@ -256,7 +259,7 @@ void Formatter::pushLineFiller(bool replaceLastChar) {
 		bc.charID = _fillerChar;
 		bc.advance = charDef.xAdvance;
 	} else {
-		output->chars.emplace_back(CharSpec{_fillerChar, lineX, charDef.xAdvance});
+		output->chars.emplace_back(CharSpec{_fillerChar, lineX, charDef.xAdvance, faceId});
 		charNum ++;
 	}
 }
@@ -268,13 +271,14 @@ bool Formatter::pushChar(char16_t ch) {
 		ch = string::tolower(ch);
 	}
 
-	CharLayout charDef = primaryData->getChar(ch);
+	uint16_t faceId = 0;
+	CharLayout charDef = output->source->getChar(primaryFontId, ch, faceId);
 
 	if (charDef.charID == 0) {
 		if (ch == (char16_t)0x00AD) {
-			charDef = primaryData->getChar('-');
+			charDef = output->source->getChar(primaryFontId, '-', faceId);
 		} else {
-			log::format("RichTextFormatter", "%s: Attempted to use undefined character: %d '%s'", primaryFont->getName().c_str(), ch, string::toUtf8(ch).c_str());
+			log::format("RichTextFormatter", "%s: Attempted to use undefined character: %d '%s'", output->source->getFontName(primaryFontId).data(), ch, string::toUtf8(ch).c_str());
 			return true;
 		}
 	}
@@ -285,7 +289,7 @@ bool Formatter::pushChar(char16_t ch) {
 
 	auto posX = lineX;
 
-	CharSpec spec{ch, posX, charDef.xAdvance};
+	CharSpec spec{ch, posX, charDef.xAdvance, faceId};
 
 	if (ch == (char16_t)0x00AD) {
 		if (textStyle.hyphens == Hyphens::Manual || textStyle.hyphens == Hyphens::Auto) {
@@ -335,14 +339,15 @@ bool Formatter::pushSpace(bool wrap) {
 }
 
 bool Formatter::pushTab() {
-	CharLayout charDef = primaryData->getChar(' ');
+	uint16_t faceId = 0;
+	CharLayout charDef = output->source->getChar(primaryFontId, ' ', faceId);
 
 	auto posX = lineX;
 	auto tabPos = (lineX + charDef.xAdvance) / (charDef.xAdvance * 4) + 1;
 	lineX = tabPos * charDef.xAdvance * 4;
 
 	charNum ++;
-	output->chars.push_back(CharSpec{char16_t('\t'), posX, uint16_t(lineX - posX)});
+	output->chars.push_back(CharSpec{char16_t('\t'), posX, uint16_t(lineX - posX), faceId});
 	if (wordWrap) {
 		wordWrapPos = charNum;
 	}
@@ -435,7 +440,7 @@ bool Formatter::pushLine(uint16_t first, uint16_t len, bool forceAlign) {
 	currentLineHeight = min(rangeLineHeight, lineHeight);
 	parseFontLineHeight(rangeLineHeight);
 	width = defaultWidth;
-	if (defaultWidth >= primaryData->getHeight()) {
+	if (defaultWidth >= output->source->getFontHeight(primaryFontId)) {
 		if (!updatePosition(lineY, currentLineHeight)) {
 			return false;
 		}
@@ -536,7 +541,7 @@ bool Formatter::pushLineBreak() {
 
 bool Formatter::pushLineBreakChar() {
 	charNum ++;
-	output->chars.push_back(CharSpec{char16_t(0x0A), lineX, 0});
+	output->chars.push_back(CharSpec{char16_t(0x0A), lineX, 0, 0});
 
 	if (!pushLine(false)) {
 		return false;
@@ -585,7 +590,7 @@ bool Formatter::readChars(WideStringView &r, const Vector<uint8_t> &hyph) {
 		if (c < char16_t(0x20)) {
 			if (emplaceAllChars) {
 				charNum ++;
-				output->chars.push_back(CharSpec{char16_t(0xFFFF), lineX, 0});
+				output->chars.push_back(CharSpec{char16_t(0xFFFF), lineX, 0, 0});
 			}
 			continue;
 		}
@@ -624,7 +629,7 @@ bool Formatter::readChars(WideStringView &r, const Vector<uint8_t> &hyph) {
 			}
 		}
 
-		auto kerning = primaryData->kerningAmount(b, c);
+		auto kerning = output->source->getKerningAmount(primaryFontId, b, c);
 		lineX += kerning;
 		if (!pushChar(c)) {
 			return false;
@@ -666,12 +671,13 @@ bool Formatter::read(const FontParameters &f, const TextParameters &s, const cha
 		return false;
 	}
 
-	Rc<FontLayout> primary, secondary;
-	clearRead();
+	FontLayoutId primary, secondary;
 
-	primary = source->getLayout(f, fontScale);
+	primaryFontId = FontLayoutIdInvalid;
+
+	primary = output->source->getLayout(f, fontScale);
 	if (f.fontVariant == FontVariant::SmallCaps) {
-		secondary = source->getLayout(f.getSmallCaps(), fontScale);
+		secondary = output->source->getLayout(f.getSmallCaps(), fontScale);
 
 		FontCharString primaryStr;
 		FontCharString secondaryStr;
@@ -682,7 +688,7 @@ bool Formatter::read(const FontParameters &f, const TextParameters &s, const cha
 			} else if (s.textTransform == TextTransform::Lowercase) {
 				ch = string::tolower(ch);
 			}
-			if (secondary && ch != string::toupper(ch)) {
+			if (secondary != FontLayoutIdInvalid && ch != string::toupper(ch)) {
 				secondaryStr.addChar(string::toupper(ch));
 			} else {
 				primaryStr.addChar(ch);
@@ -693,9 +699,9 @@ bool Formatter::read(const FontParameters &f, const TextParameters &s, const cha
 		}
 		primaryStr.addChar('-');
 		primaryStr.addChar(char16_t(0xAD));
-		primary->addString(primaryStr);
-		if (secondary) {
-			secondary->addString(secondaryStr);
+		output->source->addString(primary, primaryStr);
+		if (secondary != FontLayoutIdInvalid) {
+			output->source->addString(secondary, secondaryStr);
 		}
 	} else {
 		FontCharString primaryStr;
@@ -718,10 +724,10 @@ bool Formatter::read(const FontParameters &f, const TextParameters &s, const cha
 		primaryStr.addChar('-');
 		primaryStr.addChar(char16_t(0xAD));
 
-		primary->addString(primaryStr);
+		output->source->addString(primary, primaryStr);
 	}
 
-	auto h = primary->getData()->getHeight();
+	auto h = output->source->getFontHeight(primary);
 
 	if (f.fontVariant == FontVariant::SmallCaps && s.textTransform != TextTransform::Uppercase) {
 		size_t blockStart = 0;
@@ -736,7 +742,8 @@ bool Formatter::read(const FontParameters &f, const TextParameters &s, const cha
 					caps = true;
 					if (blockSize > 0) {
 						readWithRange(RangeSpec{false, false, s.textDecoration, s.verticalAlign,
-							uint32_t(output->chars.size()), 0, Color4B(s.color, s.opacity), h, primary},
+							uint32_t(output->chars.size()), 0, Color4B(s.color, s.opacity), h,
+							output->source->getMetrics(primary), primary},
 								s, str + blockStart, blockSize, frontOffset, backOffset);
 					}
 					blockStart = idx;
@@ -747,7 +754,8 @@ bool Formatter::read(const FontParameters &f, const TextParameters &s, const cha
 					caps = false;
 					if (blockSize > 0) {
 						readWithRange(RangeSpec{false, false, s.textDecoration, s.verticalAlign,
-							uint32_t(output->chars.size()), 0, Color4B(s.color, s.opacity), h, secondary},
+							uint32_t(output->chars.size()), 0, Color4B(s.color, s.opacity), h,
+							output->source->getMetrics(secondary), secondary},
 								capsParams, str + blockStart, blockSize, frontOffset, backOffset);
 					}
 					blockStart = idx;
@@ -759,17 +767,20 @@ bool Formatter::read(const FontParameters &f, const TextParameters &s, const cha
 		if (blockSize > 0) {
 			if (caps) {
 				return readWithRange(RangeSpec{false, false, s.textDecoration, s.verticalAlign,
-					uint32_t(output->chars.size()), 0, Color4B(s.color, s.opacity), h, secondary},
+					uint32_t(output->chars.size()), 0, Color4B(s.color, s.opacity), h,
+					output->source->getMetrics(secondary), secondary},
 						capsParams, str + blockStart, blockSize, frontOffset, backOffset);
 			} else {
 				return readWithRange(RangeSpec{false, false, s.textDecoration, s.verticalAlign,
-					uint32_t(output->chars.size()), 0, Color4B(s.color, s.opacity), h, primary},
+					uint32_t(output->chars.size()), 0, Color4B(s.color, s.opacity), h,
+					output->source->getMetrics(primary), primary},
 						s, str + blockStart, blockSize, frontOffset, backOffset);
 			}
 		}
 	} else {
 		return readWithRange(RangeSpec{false, false, s.textDecoration, s.verticalAlign,
-			uint32_t(output->chars.size()), 0, Color4B(s.color, s.opacity), h, primary},
+			uint32_t(output->chars.size()), 0, Color4B(s.color, s.opacity), h,
+			output->source->getMetrics(primary), primary},
 				s, str, len, frontOffset, backOffset);
 	}
 
@@ -777,23 +788,18 @@ bool Formatter::read(const FontParameters &f, const TextParameters &s, const cha
 }
 
 bool Formatter::read(const FontParameters &f, const TextParameters &s, uint16_t blockWidth, uint16_t blockHeight) {
-	clearRead();
+	primaryFontId = FontLayoutIdInvalid;
 
-	auto primary = source->getLayout(f, fontScale);
+	auto primary = output->source->getLayout(f, fontScale);
 
 	return readWithRange(RangeSpec{false, false, s.textDecoration, s.verticalAlign,
-		uint32_t(output->chars.size()), 0, Color4B(s.color, s.opacity), blockHeight, primary},
+		uint32_t(output->chars.size()), 0, Color4B(s.color, s.opacity), blockHeight,
+		output->source->getMetrics(primary), primary},
 			s, blockWidth, blockHeight);
 }
 
-void Formatter::clearRead() {
-	primaryFont = nullptr;
-	primaryData = nullptr;
-}
-
 bool Formatter::readWithRange(RangeSpec && range, const TextParameters &s, const char16_t *str, size_t len, uint16_t frontOffset, uint16_t backOffset) {
-	primaryFont = range.layout;
-	primaryData = primaryFont->getData();
+	primaryFontId = range.layout;
 	rangeLineHeight = range.height;
 
 	charPosition = 0;
@@ -847,8 +853,7 @@ bool Formatter::readWithRange(RangeSpec && range, const TextParameters &s, const
 	return true;
 }
 bool Formatter::readWithRange(RangeSpec &&range, const TextParameters &s, uint16_t blockWidth, uint16_t blockHeight) {
-	primaryFont = range.layout;
-	primaryData = primaryFont->getData();
+	primaryFontId = range.layout;
 	rangeLineHeight = range.height;
 
 	charPosition = 0;
@@ -888,7 +893,7 @@ bool Formatter::readWithRange(RangeSpec &&range, const TextParameters &s, uint16
 		lineX += lineOffset;
 	}
 
-	CharSpec spec{char16_t(0xFFFF), lineX, blockWidth};
+	CharSpec spec{char16_t(0xFFFF), lineX, blockWidth, 0};
 	lineX += spec.advance;
 	charNum ++;
 	output->chars.push_back(std::move(spec));
@@ -974,8 +979,7 @@ void Formatter::reset(FormatSpec *o) {
 	bufferedSpace = false;
 }
 
-void Formatter::reset(FontSource *s, FormatSpec *o, float d) {
-	source = s;
+void Formatter::reset(FormatSpec *o, float d) {
 	density = d;
 	reset(o);
 }
@@ -1001,25 +1005,18 @@ FormatSpec *Formatter::getOutput() const {
 	return output;
 }
 
-FormatSpec::FormatSpec() { }
+FormatSpec::FormatSpec(Rc<FormatterSourceInterface> &&s) : source(move(s)) { }
 
-FormatSpec::FormatSpec(size_t res) {
+FormatSpec::FormatSpec(Rc<FormatterSourceInterface> &&s, size_t res) : source(move(s)) {
 	chars.reserve(res);
 	lines.reserve(res / 60);
 	ranges.reserve(1);
 }
 
-FormatSpec::FormatSpec(size_t res, size_t rang) {
+FormatSpec::FormatSpec(Rc<FormatterSourceInterface> &&s, size_t res, size_t rang) : source(move(s)) {
 	chars.reserve(res);
 	lines.reserve(res / 60);
 	ranges.reserve(rang);
-}
-
-bool FormatSpec::init(size_t res, size_t rang) {
-	chars.reserve(res);
-	lines.reserve(res / 60);
-	ranges.reserve(rang);
-	return true;
 }
 
 void FormatSpec::reserve(size_t res, size_t rang) {
@@ -1033,6 +1030,10 @@ void FormatSpec::clear() {
 	lines.clear();
 	ranges.clear();
 	overflow = false;
+}
+
+void FormatSpec::setSource(Rc<FormatterSourceInterface> &&s) {
+	source = move(s);
 }
 
 inline static bool isSpaceOrLineBreak(char16_t c) {

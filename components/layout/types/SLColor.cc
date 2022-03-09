@@ -995,6 +995,9 @@ Color4B Color4B::progress(const Color4B &a, const Color4B &b, float fp) {
 Color4F::Color4F() : r(0.0f), g(0.0f), b(0.0f), a(0.0f) { }
 Color4F::Color4F(float _r, float _g, float _b, float _a) : r(_r), g(_g), b(_b), a(_a) { }
 
+Color4F::Color4F(const Color3B& color, uint8_t alpha)
+: r(color.r / 255.0f), g(color.g / 255.0f), b(color.b / 255.0f), a(alpha / 255.0f) { }
+
 Color4F::Color4F(const Color3B& color)
 : r(color.r / 255.0f), g(color.g / 255.0f), b(color.b / 255.0f), a(1.0f) { }
 
@@ -1023,6 +1026,14 @@ bool Color4F::operator!=(const Color3B& right) const {
 
 bool Color4F::operator!=(const Color4B& right) const {
 	return !(*this == right);
+}
+
+Color3B Color4F::getColor() const {
+	return Color3B(uint8_t(r * 255.0f), uint8_t(g * 255.0f), uint8_t(b * 255.0f));
+}
+
+uint8_t Color4F::getOpacity() const {
+	return uint8_t(a * 255.0f);
 }
 
 Color4F Color4F::progress(const Color4F &a, const Color4F &b, float p) {

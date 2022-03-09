@@ -121,7 +121,7 @@ void DynamicLabel::updateLabel() {
 		return;
 	}
 
-	auto spec = Rc<layout::FormatSpec>::create(_string16.size(), _compiledStyles.size() + 1);
+	auto spec = Rc<layout::FormatSpec>::alloc(Rc<layout::FormatterFontSource>::alloc(_source.get()), _string16.size(), _compiledStyles.size() + 1);
 	updateLabel(spec);
 
 	if (_format) {
@@ -155,8 +155,8 @@ void DynamicLabel::updateLabel(FormatSpec *format) {
 		}
 
 		_format->clear();
-
-		layout::Formatter formatter(_source, _format, _density);
+		_format->setSource(Rc<layout::FormatterFontSource>::alloc(_source));
+		layout::Formatter formatter(_format, _density);
 		formatter.setWidth((uint16_t)roundf(_width * _density));
 		formatter.setTextAlignment(_alignment);
 		formatter.setMaxWidth((uint16_t)roundf(_maxWidth * _density));
@@ -336,7 +336,7 @@ void DynamicLabel::updateQuads(uint32_t f) {
 
 	if (!_standalone) {
 		for (auto &it : _format->ranges) {
-			_source->addTextureChars(it.layout->getName(), _format->chars, it.start, it.count);
+			_source->addTextureChars(_format->source->getFontName(it.layout), _format->chars, it.start, it.count);
 		}
 
 		if (!_source->isDirty() && !_source->getTextures().empty()) {
@@ -345,9 +345,9 @@ void DynamicLabel::updateQuads(uint32_t f) {
 	} else {
 		bool sourceDirty = false;
 		for (auto &it : _format->ranges) {
-			auto find_it = _standaloneChars.find(it.layout->getName());
+			auto find_it = _standaloneChars.find(_format->source->getFontName(it.layout));
 			if (find_it == _standaloneChars.end()) {
-				find_it = _standaloneChars.emplace(it.layout->getName(), Vector<char16_t>()).first;
+				find_it = _standaloneChars.emplace(_format->source->getFontName(it.layout).str(), Vector<char16_t>()).first;
 			}
 
 			auto &vec = find_it->second;

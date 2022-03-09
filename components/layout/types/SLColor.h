@@ -113,6 +113,7 @@ struct Color4B : public AllocBase {
 struct Color4F : public AllocBase {
 	Color4F();
 	Color4F(float _r, float _g, float _b, float _a);
+	Color4F(const Color3B& color, uint8_t);
 	explicit Color4F(const Color3B& color);
 	explicit Color4F(const Color4B& color);
 
@@ -128,6 +129,9 @@ struct Color4F : public AllocBase {
 	}
 
 	operator Vec4() const { return Vec4(r, g, b, a); }
+
+	Color3B getColor() const;
+	uint8_t getOpacity() const;
 
 	float r;
 	float g;

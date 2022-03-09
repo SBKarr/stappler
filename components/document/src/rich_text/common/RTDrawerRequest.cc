@@ -208,7 +208,7 @@ void Request::draw(cocos2d::Texture2D *data) {
 			if (obj->type == Object::Type::Label) {
 				auto l = obj->asLabel();
 				for (auto &it : l->format.ranges) {
-					_font->addTextureChars(it.layout->getName(), l->format.chars, it.start, it.count);
+					_font->addTextureChars(l->format.source->getFontName(it.layout), l->format.chars, it.start, it.count);
 				}
 			} else if (obj->type == Object::Type::Background && !_isThumbnail) {
 				auto bg = obj->asBackground();

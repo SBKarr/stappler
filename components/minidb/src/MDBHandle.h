@@ -37,12 +37,16 @@ public:
 	using Comparation = stappler::sql::Comparation;
 	using QueryList = db::QueryList;
 
+	virtual ~Handle();
+
 	Handle(const Storage &, OpenMode);
 	Handle(Transaction &);
 
 	operator bool () const { return _transaction.isOpen(); }
 
 	minidb::Transaction &getTransaction();
+
+	virtual mem::String getTransactionKey() const;
 
 public:
 	virtual bool init(const Config &serv, const mem::Map<mem::StringView, const Scheme *> &) override;
@@ -85,6 +89,7 @@ protected: // prop interface
 
 	virtual mem::Vector<int64_t> getReferenceParents(const Scheme &, uint64_t oid, const Scheme *, const Field *) override;
 
+	uint64_t _order = 0;
 	size_t _transactionCounter = 0;
 	const Storage *_storage = nullptr;
 	OpenMode _mode = OpenMode::Write;

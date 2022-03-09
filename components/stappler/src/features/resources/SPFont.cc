@@ -230,7 +230,7 @@ Vector<size_t> FontLibrary::getQuadsCount(const layout::FormatSpec *format, cons
 	for (auto it = format->begin(); it != format->end(); ++ it) {
 		if (&(*it.range) != targetRange) {
 			targetRange = &(*it.range);
-			texVecIt = layouts.find(it.range->layout->getName());
+			texVecIt = layouts.find(format->source->getFontName(it.range->layout));
 			if (texVecIt == layouts.cend()) {
 				return Vector<size_t>();
 			}
@@ -314,7 +314,6 @@ bool FontLibrary::writeTextureQuads(uint32_t v, FontSource *source, const layout
 
 	const layout::RangeSpec *targetRange = nullptr;
 	Map<String, Vector<CharTexture>>::const_iterator texVecIt;
-	Rc<layout::FontLayout> layout;
 	Rc<layout::FontData> data;
 	const layout::Metrics *metrics = nullptr;
 	const Vector<layout::CharLayout> *charVec = nullptr;
@@ -329,12 +328,12 @@ bool FontLibrary::writeTextureQuads(uint32_t v, FontSource *source, const layout
 				return false;
 			}
 			targetRange = &(*it.range);
-			layout = targetRange->layout;
-			texVecIt = layouts.find(layout->getName());
+			texVecIt = layouts.find(format->source->getFontName(targetRange->layout));
 			if (texVecIt == layouts.end()) {
 				return false;
 			}
-			data = layout->getData();
+
+			data = format->source->getData(targetRange->layout);
 			metrics = &data->metrics;
 			charVec = &data->chars;
 		}
@@ -373,8 +372,7 @@ bool FontLibrary::writeTextureQuads(uint32_t v, FontSource *source, const layout
 
 			auto color = it.range->color;
 			color.a = uint8_t(0.75f * color.a);
-			Rc<font::FontLayout> layout(it.range->layout);
-			Rc<font::FontData> data(layout->getData());
+			Rc<font::FontData> data(format->source->getData(it.range->layout));
 
 			float offset = 0.0f;
 			switch (it.range->decoration) {
@@ -427,7 +425,6 @@ bool FontLibrary::writeTextureRects(uint32_t v, FontSource *source, const layout
 
 	const layout::RangeSpec *targetRange = nullptr;
 	Map<String, Vector<CharTexture>>::const_iterator texVecIt;
-	Rc<layout::FontLayout> layout;
 	Rc<layout::FontData> data;
 	const layout::Metrics *metrics = nullptr;
 	const Vector<layout::CharLayout> *charVec = nullptr;
@@ -442,12 +439,11 @@ bool FontLibrary::writeTextureRects(uint32_t v, FontSource *source, const layout
 				return false;
 			}
 			targetRange = &(*it.range);
-			layout = targetRange->layout;
-			texVecIt = layouts.find(layout->getName());
+			texVecIt = layouts.find(format->source->getFontName(targetRange->layout));
 			if (texVecIt == layouts.end()) {
 				return false;
 			}
-			data = layout->getData();
+			data = format->source->getData(targetRange->layout);
 			metrics = &data->metrics;
 			charVec = &data->chars;
 		}

@@ -109,7 +109,8 @@ bool LabelParameters::ExternalFormatter::init(Source *s, float w, float density)
 		_density = density;
 	}
 
-	_formatter.init(s, &_spec, _density);
+	_spec.setSource(Rc<layout::FormatterFontSource>::alloc(s));
+	_formatter.init(&_spec, _density);
 	if (w > 0.0f) {
 		_formatter.setWidth((uint16_t)roundf(w * _density));
 	}
@@ -172,8 +173,8 @@ float LabelParameters::getStringWidth(Source *source, const DescriptionStyle &st
 		density = screen::density();
 	}
 
-	layout::FormatSpec spec;
-	layout::Formatter fmt(source, &spec, density);
+	layout::FormatSpec spec(Rc<layout::FormatterFontSource>::alloc(source));
+	layout::Formatter fmt(&spec, density);
 	fmt.begin(0, 0);
 
 	if (localized && locale::hasLocaleTags(str)) {
@@ -207,8 +208,8 @@ Size LabelParameters::getLabelSize(Source *source, const DescriptionStyle &style
 	}
 
 
-	layout::FormatSpec spec;
-	layout::Formatter fmt(source, &spec, density);
+	layout::FormatSpec spec(Rc<layout::FormatterFontSource>::alloc(source));
+	layout::Formatter fmt(&spec, density);
 	fmt.setWidth((uint16_t)roundf(w * density));
 	fmt.begin(0, 0);
 

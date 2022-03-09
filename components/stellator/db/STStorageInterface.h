@@ -166,6 +166,8 @@ public:
 	// get current database name (driver-specific)
 	mem::StringView getDatabaseName() const { return dbName; }
 
+	virtual mem::String getTransactionKey() const { return mem::String(); }
+
 protected:
 	mem::StringView dbName;
     TransactionStatus transactionStatus = TransactionStatus::None;

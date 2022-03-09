@@ -86,7 +86,8 @@ InlineContext::InlineContext() { }
 
 bool InlineContext::init(FontSource *set, float d) {
 	targetLabel = &phantomLabel;
-	reader.init(set, &targetLabel->format, d);
+	targetLabel->format.setSource(Rc<FormatterFontSource>::alloc(set));
+	reader.init(&targetLabel->format, d);
 	density = d;
 	return true;
 }
@@ -203,27 +204,19 @@ Layout * InlineContext::alignInlineContext(Layout &inl, const Vec2 &origin) {
 	const CharSpec &c = targetLabel->format.chars.at(r.start + r.count - 1);
 	auto line = targetLabel->format.getLine(r.start + r.count - 1);
 	if (line) {
+		int16_t baseline = (int16_t(r.metrics.size) - int16_t(r.metrics.height));;
 		switch (r.align) {
 		case style::VerticalAlign::Baseline:
-			if (auto data = r.layout->getData()) {
-				const auto baseline = (data->metrics.size - data->metrics.height);
-				inl.setBoundPosition(origin + Vec2(c.pos / density,
-						(line->pos - inl.pos.size.height * density + baseline) / density));
-			}
+			inl.setBoundPosition(origin + Vec2(c.pos / density,
+					(line->pos - inl.pos.size.height * density + baseline) / density));
 			break;
 		case style::VerticalAlign::Sub:
-			if (auto data = r.layout->getData()) {
-				const auto baseline = (data->metrics.size - data->metrics.height);
-				inl.setBoundPosition(origin + Vec2(c.pos / density,
-						(line->pos - inl.pos.size.height * density + (baseline - data->metrics.descender / 2)) / density));
-			}
+			inl.setBoundPosition(origin + Vec2(c.pos / density,
+					(line->pos - inl.pos.size.height * density + (baseline - r.metrics.descender / 2)) / density));
 			break;
 		case style::VerticalAlign::Super:
-			if (auto data = r.layout->getData()) {
-				const auto baseline = (data->metrics.size - data->metrics.height);
-				inl.setBoundPosition(origin + Vec2(c.pos / density,
-						(line->pos - inl.pos.size.height * density + (baseline - data->metrics.ascender / 2)) / density));
-			}
+			inl.setBoundPosition(origin + Vec2(c.pos / density,
+					(line->pos - inl.pos.size.height * density + (baseline - r.metrics.ascender / 2)) / density));
 			break;
 		case style::VerticalAlign::Middle:
 			inl.setBoundPosition(origin + Vec2(c.pos / density, (line->pos - (r.height + inl.pos.size.height * density) / 2) / density));
