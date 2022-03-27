@@ -179,8 +179,17 @@ namespace style {
 		W700,
 		W800,
 		W900,
-		Bold = W700,
+		Thin = W100,
+		ExtraLight = W200,
+		Light = W300,
 		Normal = W400,
+		Regular = W400,
+		Medium = W500,
+		SemiBold = W600,
+		Bold = W700,
+		ExtraBold = W800,
+		Heavy = W900,
+		Black = W900,
 	};
 
 	enum class FontStretch : EnumSize {
@@ -840,5 +849,18 @@ namespace style {
 }
 
 NS_LAYOUT_END
+
+namespace std {
+
+template <>
+struct hash<stappler::layout::style::FontSize> {
+	hash() { }
+
+	size_t operator() (const stappler::layout::style::FontSize &value) const noexcept {
+		return hash<uint16_t>{}(value.get());
+	}
+};
+
+}
 
 #endif /* LAYOUT_STYLE_SLSTYLE_H_ */

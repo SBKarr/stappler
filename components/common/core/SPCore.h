@@ -627,4 +627,17 @@ static constexpr auto align(T size, T boundary) -> T {
 
 }
 
+namespace std {
+
+template <typename Value, typename Flag>
+struct hash<stappler::ValueWrapper<Value, Flag>> {
+	hash() { }
+
+	size_t operator() (const stappler::ValueWrapper<Value, Flag> &value) const noexcept {
+		return hash<Value>()(value.get());
+	}
+};
+
+}
+
 #endif /* COMMON_CORE_SPCORE_H_ */

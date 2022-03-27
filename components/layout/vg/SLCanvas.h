@@ -49,10 +49,6 @@ public:
 	constexpr static float QualityHigh = 1.75f;
 	constexpr static float QualityPerfect = 2.25f;
 
-	static Size calculateImageBoxSize(const Rect &bbox, const Size &size, const BackgroundStyle &bg);
-	static Rect calculateImageBoxRect(const Rect &bbox, const Size &size, const BackgroundStyle &bg);
-	static Rect calculateImageContentRect(const Rect &bbox, const Size &size, const BackgroundStyle &bg);
-
 	Canvas();
 	virtual ~Canvas();
 

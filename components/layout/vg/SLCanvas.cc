@@ -42,84 +42,14 @@ static void staticPoolFree(void * userData, void * ptr) {
 	TESS_NOTUSED(ptr);
 }
 
-Size Canvas::calculateImageBoxSize(const Rect &bbox, const Size &size, const BackgroundStyle &bg) {
-	if (bg.backgroundSizeWidth.metric == layout::style::Metric::Units::Auto
-				&& bg.backgroundSizeHeight.metric == layout::style::Metric::Units::Auto) {
-		return bbox.size;
-	}
-
-	const float coverRatio = std::max(bbox.size.width / size.width, bbox.size.height / size.height);
-	const float containRatio = std::min(bbox.size.width / size.width, bbox.size.height / size.height);
-
-	Size coverSize(size.width * coverRatio, size.height * coverRatio);
-	Size containSize(size.width * containRatio, size.height * containRatio);
-
-	float boxWidth = 0.0f, boxHeight = 0.0f;
-	switch (bg.backgroundSizeWidth.metric) {
-	case layout::style::Metric::Units::Contain: boxWidth = containSize.width; break;
-	case layout::style::Metric::Units::Cover: boxWidth = coverSize.width; break;
-	case layout::style::Metric::Units::Percent: boxWidth = bbox.size.width * bg.backgroundSizeWidth.value; break;
-	case layout::style::Metric::Units::Px: boxWidth = bg.backgroundSizeWidth.value; break;
-	default: boxWidth = bbox.size.width; break;
-	}
-
-	switch (bg.backgroundSizeHeight.metric) {
-	case layout::style::Metric::Units::Contain: boxHeight = containSize.height; break;
-	case layout::style::Metric::Units::Cover: boxHeight = coverSize.height; break;
-	case layout::style::Metric::Units::Percent: boxHeight = bbox.size.height * bg.backgroundSizeHeight.value; break;
-	case layout::style::Metric::Units::Px: boxHeight = bg.backgroundSizeHeight.value; break;
-	default: boxHeight = bbox.size.height; break;
-	}
-
-	if (bg.backgroundSizeWidth.metric == layout::style::Metric::Units::Auto) {
-		boxWidth = boxHeight * (size.width / size.height);
-	} else if (bg.backgroundSizeHeight.metric == layout::style::Metric::Units::Auto) {
-		boxHeight = boxWidth * (size.height / size.width);
-	}
-
-	return Size(boxWidth, boxHeight);
+static inline float canvas_approx_err_sq(float e) {
+	e = (1.0f / e);
+	return e * e;
 }
 
-Rect Canvas::calculateImageBoxRect(const Rect &bbox, const Size &size, const BackgroundStyle &bg) {
-	Size boxSize(calculateImageBoxSize(bbox, size, bg));
-
-	const float availableWidth = bbox.size.width - boxSize.width;
-	const float availableHeight = bbox.size.height - boxSize.height;
-
-	float xOffset = 0.0f, yOffset = 0.0f;
-
-	switch (bg.backgroundPositionX.metric) {
-	case layout::style::Metric::Units::Percent: xOffset = availableWidth * bg.backgroundPositionX.value; break;
-	case layout::style::Metric::Units::Px: xOffset = bg.backgroundPositionX.value; break;
-	default: xOffset = availableWidth / 2.0f; break;
-	}
-
-	switch (bg.backgroundPositionY.metric) {
-	case layout::style::Metric::Units::Percent: yOffset = availableHeight * bg.backgroundPositionY.value; break;
-	case layout::style::Metric::Units::Px: yOffset = bg.backgroundPositionY.value; break;
-	default: yOffset = availableHeight / 2.0f; break;
-	}
-
-	return Rect(bbox.origin.x + xOffset, bbox.origin.y + yOffset, boxSize.width, boxSize.height);
-}
-
-Rect Canvas::calculateImageContentRect(const Rect &bbox, const Size &size, const BackgroundStyle &bg) {
-	Rect boxRect(calculateImageBoxRect(bbox, size, bg));
-	Rect contentBox(0, 0, size.width, size.height);
-
-	if (boxRect.size.width > bbox.size.width) {
-		const float scale = size.width / boxRect.size.width;
-		contentBox.size.width = bbox.size.width * scale;
-		contentBox.origin.x += (boxRect.size.width - bbox.size.width) * scale;
-	}
-
-	if (boxRect.size.height > bbox.size.height) {
-		const float scale = size.height / boxRect.size.height;
-		contentBox.size.height = bbox.size.height * scale;
-		contentBox.origin.y += (boxRect.size.height - bbox.size.height) * scale;
-	}
-
-	return contentBox;
+static inline float canvas_dist_sq(float x1, float y1, float x2, float y2) {
+	const float dx = x2 - x1, dy = y2 - y1;
+	return dx * dx + dy * dy;
 }
 
 Canvas::Canvas() : _pool(memory::pool::createTagged(nullptr, "layout::Canvas")), _tess(_pool), _stroke(_pool), _line(_pool) {
@@ -171,11 +101,11 @@ void Canvas::draw(const Image &img) {
 		batch = true;
 	}
 
-	img.draw([&] (const Path &path, const Vec2 &pos) {
-		if (pos.isZero()) {
+	img.draw([&] (const Path &path, const Mat4 &m) {
+		if (m.isIdentity()) {
 			draw(path);
 		} else {
-			draw(path, pos.x, pos.y);
+			draw(path, m);
 		}
 	});
 
@@ -438,16 +368,6 @@ void Canvas::flushBatch() {
 		_transform = tmp;
 		_batchTransform = Mat4::IDENTITY;
 	}
-}
-
-static inline float canvas_approx_err_sq(float e) {
-	e = (1.0f / e);
-	return e * e;
-}
-
-static inline float canvas_dist_sq(float x1, float y1, float x2, float y2) {
-	const float dx = x2 - x1, dy = y2 - y1;
-	return dx * dx + dy * dy;
 }
 
 void Canvas::pushContour(const Path &path, bool closed) {

@@ -29,27 +29,7 @@
 ** Author: Eric Veach, July 1994.
 */
 
-#include <stddef.h>
-#include <assert.h>
-#include <setjmp.h>
-#include <math.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <stdint.h>
-#include <float.h>
-
-#include "SLTessGeom.h"
-#include "SLTessMesh.h"
-#include "SLTessSweep.h"
-#include "SLTessTess.h"
-
-//TESS_OPTIMIZE
-
-#define TRUE 1
-#define FALSE 0
-
-#define MATH_TOLERANCE FLT_EPSILON
-#define ANTIALIAS_TOLERANCE 0.5f
+#include "SLTessInternal.h"
 
 #define Dot(u,v)	(u[0]*v[0] + u[1]*v[1] + u[2]*v[2])
 
@@ -332,7 +312,6 @@ TESStesselator* tessNewTess( TESSalloc* alloc )
 	tess->outOfMemory = 0;
 	tess->vertexIndexCounter = 0;
 	tess->antiAliasValue = 0.0f;
-	tess->antiAlias = 0;
 	tess->plane = 0;
 	tess->color.r = 0;
 	tess->color.g = 0;
@@ -643,7 +622,7 @@ static void OutputRawTrianglesAntiAliasVec( TESSResult *res, TESStesselator **te
 
 	TESStesselator **tessIt = tess;
 	for (int i = 0; i < count; ++ i) {
-		if ((*tessIt)->antiAlias) {
+		if ((*tessIt)->antiAliasValue != 0.0f) {
 			TESSmesh *mesh = (*tessIt)->mesh;
 			tessMeshSetWindingNumber( mesh, 1, TRUE );
 
@@ -681,7 +660,7 @@ static void OutputRawTrianglesAntiAliasVec( TESSResult *res, TESStesselator **te
 	TESSshort startVert = 0;
 	tessIt = tess;
 	for (int i = 0; i < count; ++ i) {
-		if ((*tessIt)->antiAlias) {
+		if ((*tessIt)->antiAliasValue != 0.0f) {
 			TESSmesh *mesh = (*tessIt)->mesh;
 			for ( TESSface * f = mesh->fHead.next; f != &mesh->fHead; f = f->next ) {
 				if ( !f->inside ) continue;
@@ -750,10 +729,5 @@ void tessSetColor(TESStesselator *tess, TESSColor color) {
 	tess->color = color;
 }
 void tessSetAntiAliased(TESStesselator *tess, TESSreal val) {
-	if (val != 0.0f) {
-		tess->antiAlias = 1;
-		tess->antiAliasValue = val;
-	} else {
-		tess->antiAlias = 0;
-	}
+	tess->antiAliasValue = val;
 }

@@ -31,6 +31,86 @@ TESS_OPTIMIZE
 
 NS_LAYOUT_BEGIN
 
+Size calculateImageBoxSize(const Rect &bbox, const Size &imageSize, const BackgroundStyle &bg) {
+	if (bg.backgroundSizeWidth.metric == layout::style::Metric::Units::Auto
+				&& bg.backgroundSizeHeight.metric == layout::style::Metric::Units::Auto) {
+		return bbox.size;
+	}
+
+	const float coverRatio = std::max(bbox.size.width / imageSize.width, bbox.size.height / imageSize.height);
+	const float containRatio = std::min(bbox.size.width / imageSize.width, bbox.size.height / imageSize.height);
+
+	Size coverSize(imageSize.width * coverRatio, imageSize.height * coverRatio);
+	Size containSize(imageSize.width * containRatio, imageSize.height * containRatio);
+
+	float boxWidth = 0.0f, boxHeight = 0.0f;
+	switch (bg.backgroundSizeWidth.metric) {
+	case layout::style::Metric::Units::Contain: boxWidth = containSize.width; break;
+	case layout::style::Metric::Units::Cover: boxWidth = coverSize.width; break;
+	case layout::style::Metric::Units::Percent: boxWidth = bbox.size.width * bg.backgroundSizeWidth.value; break;
+	case layout::style::Metric::Units::Px: boxWidth = bg.backgroundSizeWidth.value; break;
+	default: boxWidth = bbox.size.width; break;
+	}
+
+	switch (bg.backgroundSizeHeight.metric) {
+	case layout::style::Metric::Units::Contain: boxHeight = containSize.height; break;
+	case layout::style::Metric::Units::Cover: boxHeight = coverSize.height; break;
+	case layout::style::Metric::Units::Percent: boxHeight = bbox.size.height * bg.backgroundSizeHeight.value; break;
+	case layout::style::Metric::Units::Px: boxHeight = bg.backgroundSizeHeight.value; break;
+	default: boxHeight = bbox.size.height; break;
+	}
+
+	if (bg.backgroundSizeWidth.metric == layout::style::Metric::Units::Auto) {
+		boxWidth = boxHeight * (imageSize.width / imageSize.height);
+	} else if (bg.backgroundSizeHeight.metric == layout::style::Metric::Units::Auto) {
+		boxHeight = boxWidth * (imageSize.height / imageSize.width);
+	}
+
+	return Size(boxWidth, boxHeight);
+}
+
+Rect calculateImageBoxRect(const Rect &bbox, const Size &size, const BackgroundStyle &bg) {
+	Size boxSize(calculateImageBoxSize(bbox, size, bg));
+
+	const float availableWidth = bbox.size.width - boxSize.width;
+	const float availableHeight = bbox.size.height - boxSize.height;
+
+	float xOffset = 0.0f, yOffset = 0.0f;
+
+	switch (bg.backgroundPositionX.metric) {
+	case layout::style::Metric::Units::Percent: xOffset = availableWidth * bg.backgroundPositionX.value; break;
+	case layout::style::Metric::Units::Px: xOffset = bg.backgroundPositionX.value; break;
+	default: xOffset = availableWidth / 2.0f; break;
+	}
+
+	switch (bg.backgroundPositionY.metric) {
+	case layout::style::Metric::Units::Percent: yOffset = availableHeight * bg.backgroundPositionY.value; break;
+	case layout::style::Metric::Units::Px: yOffset = bg.backgroundPositionY.value; break;
+	default: yOffset = availableHeight / 2.0f; break;
+	}
+
+	return Rect(bbox.origin.x + xOffset, bbox.origin.y + yOffset, boxSize.width, boxSize.height);
+}
+
+Rect calculateImageContentRect(const Rect &bbox, const Size &size, const BackgroundStyle &bg) {
+	Rect boxRect(calculateImageBoxRect(bbox, size, bg));
+	Rect contentBox(0, 0, size.width, size.height);
+
+	if (boxRect.size.width > bbox.size.width) {
+		const float scale = size.width / boxRect.size.width;
+		contentBox.size.width = bbox.size.width * scale;
+		contentBox.origin.x += (boxRect.size.width - bbox.size.width) * scale;
+	}
+
+	if (boxRect.size.height > bbox.size.height) {
+		const float scale = size.height / boxRect.size.height;
+		contentBox.size.height = bbox.size.height * scale;
+		contentBox.origin.y += (boxRect.size.height - bbox.size.height) * scale;
+	}
+
+	return contentBox;
+}
+
 constexpr size_t getMaxRecursionDepth() { return 16; }
 
 // based on:
@@ -136,10 +216,10 @@ static void drawQuadBezierRecursive(LineDrawer &drawer, float x0, float y0, floa
 			sd = draw_dist_sq(x0, y0, x1, y1);
 		} else {
 			sd = ((x1 - x0) * dx + (y1 - y0) * dy) / da;
-			if(sd > 0 && sd < 1) {
+			if (sd > 0 && sd < 1) {
 				return; // degraded case
 			}
-			if(sd <= 0) {
+			if (sd <= 0) {
 				sd = draw_dist_sq(x1, y1, x0, y0);
 			} else if(sd >= 1) {
 				sd = draw_dist_sq(x1, y1, x2, y2);
@@ -166,18 +246,18 @@ static void drawCubicBezierRecursive(LineDrawer &drawer, float x0, float y0, flo
 		return;
 	}
 
-    const float x01_mid = (x0 + x1) / 2, y01_mid = (y0 + y1) / 2; // between 0 and 1
-    const float x12_mid = (x1 + x2) / 2, y12_mid = (y1 + y2) / 2; // between 1 and 2
-    const float x23_mid = (x2 + x3) / 2, y23_mid = (y2 + y3) / 2; // between 2 and 3
+	const float x01_mid = (x0 + x1) / 2, y01_mid = (y0 + y1) / 2; // between 0 and 1
+	const float x12_mid = (x1 + x2) / 2, y12_mid = (y1 + y2) / 2;// between 1 and 2
+	const float x23_mid = (x2 + x3) / 2, y23_mid = (y2 + y3) / 2;// between 2 and 3
 
-    const float x012_mid = (x01_mid + x12_mid) / 2, y012_mid = (y01_mid + y12_mid) / 2; // bisect midpoint in 012
-    const float x123_mid = (x12_mid + x23_mid) / 2, y123_mid = (y12_mid + y23_mid) / 2; // bisect midpoint in 123
+	const float x012_mid = (x01_mid + x12_mid) / 2, y012_mid = (y01_mid + y12_mid) / 2;// bisect midpoint in 012
+	const float x123_mid = (x12_mid + x23_mid) / 2, y123_mid = (y12_mid + y23_mid) / 2;// bisect midpoint in 123
 
-	const float x_mid = (x012_mid + x123_mid) / 2, y_mid = (y012_mid + y123_mid) / 2; // midpoint on curve
+	const float x_mid = (x012_mid + x123_mid) / 2, y_mid = (y012_mid + y123_mid) / 2;// midpoint on curve
 
 	const float dx = x3 - x0, dy = y3 - y0;
-	const float d1 = fabsf(((x1 - x3) * dy - (y1 - y3) * dx)); // distance factor from 0-3 to 1
-	const float d2 = fabsf(((x2 - x3) * dy - (y2 - y3) * dx)); // distance factor from 0-3 to 2
+	const float d1 = fabsf(((x1 - x3) * dy - (y1 - y3) * dx));// distance factor from 0-3 to 1
+	const float d2 = fabsf(((x2 - x3) * dy - (y2 - y3) * dx));// distance factor from 0-3 to 2
 
 	const bool significantPoint1 = d1 > std::numeric_limits<float>::epsilon();
 	const bool significantPoint2 = d2 > std::numeric_limits<float>::epsilon();
@@ -189,80 +269,79 @@ static void drawCubicBezierRecursive(LineDrawer &drawer, float x0, float y0, flo
 			drawer.pushLine(x12_mid, y12_mid);
 			fill = false;
 		}
-        if (d_sq <= drawer.distanceError) {
-            if (drawer.angularError < std::numeric_limits<float>::epsilon()) {
-            	drawer.push(x12_mid, y12_mid);
-            	return;
-            }
+		if (d_sq <= drawer.distanceError) {
+			if (drawer.angularError < std::numeric_limits<float>::epsilon()) {
+				drawer.push(x12_mid, y12_mid);
+				return;
+			}
 
-            const float tmp = atan2(y2 - y1, x2 - x1);
-            const float da1 = fabs(tmp - atan2(y1 - y0, x1 - x0));
-            const float da2 = fabs(atan2(y3 - y2, x3 - x2) - tmp);
-            const float da = std::min(da1, float(2 * M_PI - da1)) + std::min(da2, float(2 * M_PI - da2));
-            if (da < drawer.angularError) {
-            	drawer.push(x12_mid, y12_mid);
-            	return;
-            }
-        }
+			const float tmp = atan2(y2 - y1, x2 - x1);
+			const float da1 = fabs(tmp - atan2(y1 - y0, x1 - x0));
+			const float da2 = fabs(atan2(y3 - y2, x3 - x2) - tmp);
+			const float da = std::min(da1, float(2 * M_PI - da1)) + std::min(da2, float(2 * M_PI - da2));
+			if (da < drawer.angularError) {
+				drawer.push(x12_mid, y12_mid);
+				return;
+			}
+		}
 	} else if (significantPoint1) {
 		const float d_sq = (d1 * d1) / (dx * dx + dy * dy);
-        if (fill && d_sq <= drawer.approxError) {
+		if (fill && d_sq <= drawer.approxError) {
 			drawer.pushLine(x12_mid, y12_mid);
 			fill = false;
-        }
-        if (d_sq <= drawer.distanceError) {
-            if (drawer.angularError < std::numeric_limits<float>::epsilon()) {
-            	drawer.push(x12_mid, y12_mid);
-            	return;
-            } else {
-                const float da = fabsf(atan2f(y2 - y1, x2 - x1) - atan2f(y1 - y0, x1 - x0));
-                if (std::min(da, float(2 * M_PI - da)) < drawer.angularError) {
-                	drawer.push(x1, y1);
-                	drawer.push(x2, y2);
-                	return;
-                }
-            }
-
-        }
+		}
+		if (d_sq <= drawer.distanceError) {
+			if (drawer.angularError < std::numeric_limits<float>::epsilon()) {
+				drawer.push(x12_mid, y12_mid);
+				return;
+			} else {
+				const float da = fabsf(atan2f(y2 - y1, x2 - x1) - atan2f(y1 - y0, x1 - x0));
+				if (std::min(da, float(2 * M_PI - da)) < drawer.angularError) {
+					drawer.push(x1, y1);
+					drawer.push(x2, y2);
+					return;
+				}
+			}
+		}
 	} else if (significantPoint2) {
 		const float d_sq = (d2 * d2) / (dx * dx + dy * dy);
-        if (fill && d_sq <= drawer.approxError) {
+		if (fill && d_sq <= drawer.approxError) {
 			drawer.pushLine(x12_mid, y12_mid);
 			fill = false;
-        }
-        if (d_sq <= drawer.distanceError) {
-            if (drawer.angularError < std::numeric_limits<float>::epsilon()) {
-            	drawer.push(x12_mid, y12_mid);
-            	return;
-            } else {
-                const float da = fabsf(atan2f(y3 - y2, x3 - x2) - atan2f(y2 - y1, x2 - x1));
-                if (std::min(da, float(2 * M_PI - da)) < drawer.angularError) {
-                	drawer.push(x1, y1);
-                	drawer.push(x2, y2);
-                	return;
-                }
-            }
-        }
+		}
+		if (d_sq <= drawer.distanceError) {
+			if (drawer.angularError < std::numeric_limits<float>::epsilon()) {
+				drawer.push(x12_mid, y12_mid);
+				return;
+			} else {
+				const float da = fabsf(atan2f(y3 - y2, x3 - x2) - atan2f(y2 - y1, x2 - x1));
+				if (std::min(da, float(2 * M_PI - da)) < drawer.angularError) {
+					drawer.push(x1, y1);
+					drawer.push(x2, y2);
+					return;
+				}
+			}
+		}
 	} else {
 		float sd1, sd2;
-        const float k = dx * dx + dy * dy;
-        if (k == 0) {
-        	sd1 = draw_dist_sq(x0, y0, x1, y1);
-        	sd2 = draw_dist_sq(x3, y3, x2, y2);
-        } else {
-            sd1 = ((x1 - x0) * dx + (y1 - y0) * dy) / k;
-            sd2 = ((x2 - x0) * dx + (y2 - y0) * dy) / k;
-            if (sd1 > 0 && sd1 < 1 && sd2 > 0 && sd2 < 1) {
-                return;
-            }
+		const float k = dx * dx + dy * dy;
+		if (k == 0) {
+			sd1 = draw_dist_sq(x0, y0, x1, y1);
+			sd2 = draw_dist_sq(x3, y3, x2, y2);
+		} else {
+			sd1 = ((x1 - x0) * dx + (y1 - y0) * dy) / k;
+			sd2 = ((x2 - x0) * dx + (y2 - y0) * dy) / k;
+			if (sd1 > 0 && sd1 < 1 && sd2 > 0 && sd2 < 1) {
+				return;
+			}
 
-            if (sd1 <= 0) {
-            	sd1 = draw_dist_sq(x1, y1, x0, y0);
-            } else if (sd1 >= 1) {
-            	sd1 = draw_dist_sq(x1, y1, x3, y3);
-            } else {
-            	sd1 = draw_dist_sq(x1, y1, x0 + d1 * dx, y0 + d1 * dy);
-            }
+			if (sd1 <= 0) {
+				sd1 = draw_dist_sq(x1, y1, x0, y0);
+			} else if (sd1 >= 1) {
+				sd1 = draw_dist_sq(x1, y1, x3, y3);
+			} else {
+				sd1 = draw_dist_sq(x1, y1, x0 + d1 * dx, y0 + d1 * dy);
+			}
 
 			if (sd2 <= 0) {
 				sd2 = draw_dist_sq(x2, y2, x0, y0);
@@ -271,26 +350,26 @@ static void drawCubicBezierRecursive(LineDrawer &drawer, float x0, float y0, flo
 			} else {
 				sd2 = draw_dist_sq(x2, y2, x0 + d2 * dx, y0 + d2 * dy);
 			}
-        }
-        if (sd1 > sd2) {
-            if (fill && sd1 < drawer.approxError) {
-    			drawer.pushLine(x1, y1);
-    			fill = false;
-            }
-            if (sd1 < drawer.distanceError) {
-            	drawer.push(x1, y1);
-            	return;
-            }
-        } else {
-            if (fill && sd2 < drawer.approxError) {
-    			drawer.pushLine(x2, y2);
-    			fill = false;
-            }
-            if (sd2 < drawer.distanceError) {
-            	drawer.push(x2, y2);
-            	return;
-            }
-        }
+		}
+		if (sd1 > sd2) {
+			if (fill && sd1 < drawer.approxError) {
+				drawer.pushLine(x1, y1);
+				fill = false;
+			}
+			if (sd1 < drawer.distanceError) {
+				drawer.push(x1, y1);
+				return;
+			}
+		} else {
+			if (fill && sd2 < drawer.approxError) {
+				drawer.pushLine(x2, y2);
+				fill = false;
+			}
+			if (sd2 < drawer.distanceError) {
+				drawer.push(x2, y2);
+				return;
+			}
+		}
 	}
 
 	drawCubicBezierRecursive(drawer, x0, y0, x01_mid, y01_mid, x012_mid, y012_mid, x_mid, y_mid, depth + 1, fill);

@@ -31,7 +31,8 @@ SERENITY_SRCS_DIRS += \
 	components/serenity/src \
 	components/stellator/db \
 	components/stellator/utils \
-	components/layout/types
+	components/layout/types \
+	components/layout/simd
 
 SERENITY_PRECOMPILED_HEADERS += \
 	components/stellator/serenity_api/Define.h \
@@ -67,6 +68,7 @@ SERENITY_INCLUDES_OBJS += \
 	components/layout/vg \
 	components/layout/vg/tess \
 	components/layout \
+	components/thirdparty \
 	$(APACHE_INCLUDE)
 
 SERENITY_VIRTUAL_SRCS := \

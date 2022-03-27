@@ -248,7 +248,7 @@ void Formatter::pushLineFiller(bool replaceLastChar) {
 	if (_fillerChar == 0) {
 		return;
 	}
-	uint16_t faceId = 0;
+
 	auto charDef = output->source->getChar(primaryFontId, _fillerChar, faceId);
 	if (!charDef) {
 		return;
@@ -271,7 +271,6 @@ bool Formatter::pushChar(char16_t ch) {
 		ch = string::tolower(ch);
 	}
 
-	uint16_t faceId = 0;
 	CharLayout charDef = output->source->getChar(primaryFontId, ch, faceId);
 
 	if (charDef.charID == 0) {
@@ -339,7 +338,6 @@ bool Formatter::pushSpace(bool wrap) {
 }
 
 bool Formatter::pushTab() {
-	uint16_t faceId = 0;
 	CharLayout charDef = output->source->getChar(primaryFontId, ' ', faceId);
 
 	auto posX = lineX;
@@ -629,7 +627,7 @@ bool Formatter::readChars(WideStringView &r, const Vector<uint8_t> &hyph) {
 			}
 		}
 
-		auto kerning = output->source->getKerningAmount(primaryFontId, b, c);
+		auto kerning = output->source->getKerningAmount(primaryFontId, b, c, faceId);
 		lineX += kerning;
 		if (!pushChar(c)) {
 			return false;

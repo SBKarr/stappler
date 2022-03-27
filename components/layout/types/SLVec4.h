@@ -50,25 +50,10 @@ public:
 		};
 		__m128 v;
 	};
-	#else
-	/**
-	 * The x-coordinate.
-	 */
+#else
 	float x;
-
-	/**
-	 * The y-coordinate.
-	 */
 	float y;
-
-	/**
-	 * The z-coordinate.
-	 */
 	float z;
-
-	/**
-	 * The w-coordinate.
-	 */
 	float w;
 #endif
 	/**
@@ -85,6 +70,8 @@ public:
 	 * @param ww The w coordinate.
 	 */
 	Vec4(float xx, float yy, float zz, float ww);
+
+	Vec4(const Vec2 &, float zz, float ww);
 
 	/**
 	 * Constructs a new vector from the values in the specified array.
@@ -455,11 +442,17 @@ public:
  */
 inline const Vec4 operator*(float x, const Vec4& v);
 
+inline Vec4 operator*(const Vec4 &l, const Vec4 &r);
+inline Vec4 operator/(const Vec4 &l, const Vec4 &r);
+
 NS_LAYOUT_END
+
 /**
  end of base group
  @}
  */
+
+
 #include "SLVec4.inl.hpp"
 
 #endif // MATH_VEC4_H

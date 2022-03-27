@@ -29,12 +29,7 @@
 ** Author: Eric Veach, July 1994.
 */
 
-#include <stddef.h>
-#include <stdint.h>
-#include "SLTesselator.h"
-#include "SLTessDict.h"
-
-TESS_OPTIMIZE
+#include "SLTessInternal.h"
 
 /* really tessDictListNewDict */
 Dict *dictNewDict( TESSalloc* alloc, void *frame, int (*leq)(void *frame, DictKey key1, DictKey key2) )

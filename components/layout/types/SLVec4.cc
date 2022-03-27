@@ -32,6 +32,8 @@ Vec4::Vec4() : x(0.0f), y(0.0f), z(0.0f), w(0.0f) { }
 
 Vec4::Vec4(float xx, float yy, float zz, float ww) : x(xx), y(yy), z(zz), w(ww) { }
 
+Vec4::Vec4(const Vec2 &origin, float zz, float ww) : x(origin.x), y(origin.y), z(zz), w(ww) { }
+
 Vec4::Vec4(const float* src) {
 	set(src);
 }
@@ -234,13 +236,6 @@ Vec4 Vec4::getNormalized() const {
 	Vec4 v(*this);
 	v.normalize();
 	return v;
-}
-
-void Vec4::scale(float scalar) {
-	x *= scalar;
-	y *= scalar;
-	z *= scalar;
-	w *= scalar;
 }
 
 void Vec4::set(float xx, float yy, float zz, float ww) {

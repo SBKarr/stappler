@@ -27,6 +27,11 @@ THE SOFTWARE.
 
 NS_LAYOUT_BEGIN
 
+struct PathXRef {
+	String id;
+	Mat4 mat;
+};
+
 class Path : public Ref {
 public:
 	using Style = DrawStyle;

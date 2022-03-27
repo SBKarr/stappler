@@ -108,7 +108,13 @@ private:
 	static void transposeMatrix(const __m128 m[4], __m128 dst[4]);
 
 	static void transformVec4(const __m128 m[4], const __m128& v, __m128& dst);
+
+	static void multiplyVec4(const __m128 &a, const __m128 &b, __m128& dst);
+	static void divideVec4(const __m128 &a, const __m128 &b, __m128& dst);
 #endif
+
+
+
 	static void addMatrix(const float* m, float scalar, float* dst);
 
 	static void addMatrix(const float* m1, const float* m2, float* dst);

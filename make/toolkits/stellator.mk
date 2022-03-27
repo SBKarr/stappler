@@ -31,7 +31,8 @@ STELLATOR_SRCS_DIRS += \
 	components/common \
 	components/stellator \
 	components/spug \
-	components/layout/types
+	components/layout/types \
+	components/layout/simd
 
 STELLATOR_SRCS_OBJS += 
 STELLATOR_INCLUDES_DIRS += \
@@ -46,7 +47,8 @@ STELLATOR_INCLUDES_OBJS += \
 	components/layout/document \
 	components/layout/vg \
 	components/layout/vg/tess \
-	components/layout
+	components/layout \
+	components/thirdparty
 
 TOOLKIT_NAME := STELLATOR
 TOOLKIT_TITLE := stellator

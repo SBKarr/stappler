@@ -760,11 +760,11 @@ Rc<cocos2d::Texture2D> TextureCache::doRenderImage(cocos2d::Texture2D *tex, Text
 		canvas->scale(scaleX, scaleY);
 		canvas->transform(image.getViewBoxTransform());
 
-		image.draw([&] (const layout::Path &path, const Vec2 &pos) {
-			if (pos.isZero()) {
+		image.draw([&] (const layout::Path &path, const Mat4 &pos) {
+			if (pos.isIdentity()) {
 				canvas->draw(path);
 			} else {
-				canvas->draw(path, pos.x, pos.y);
+				canvas->draw(path, pos);
 			}
 		});
 

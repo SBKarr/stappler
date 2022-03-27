@@ -29,22 +29,7 @@
 ** Author: Eric Veach, July 1994.
 */
 
-#include <assert.h>
-#include <stddef.h>
-#include <setjmp.h>		/* longjmp */
-#include <stdint.h>
-
-#include "SLTessDict.h"
-#include "SLTessGeom.h"
-#include "SLTessMesh.h"
-#include "SLTessPriorityq.h"
-#include "SLTessSweep.h"
-#include "SLTessTess.h"
-
-TESS_OPTIMIZE
-
-#define TRUE 1
-#define FALSE 0
+#include "SLTessInternal.h"
 
 #ifdef FOR_TRITE_TEST_PROGRAM
 extern void DebugEvent( TESStesselator *tess );

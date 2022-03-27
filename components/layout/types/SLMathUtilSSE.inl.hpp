@@ -164,6 +164,15 @@ void MathUtil::transformVec4(const __m128 m[4], const __m128& v, __m128& dst) {
 	);
 }
 
+void MathUtil::multiplyVec4(const __m128 &a, const __m128 &b, __m128& dst) {
+	dst = _mm_mul_ps(a, b);
+}
+
+void MathUtil::divideVec4(const __m128 &a, const __m128 &b, __m128& dst) {
+	dst = _mm_div_ps(a, b);
+}
+
+
 #endif
 
 NS_LAYOUT_END

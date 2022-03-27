@@ -986,15 +986,21 @@ Mat4 Mat4::getTransposed() const
 }
 
 const Mat4 Mat4::IDENTITY = Mat4(
-                    1.0f, 0.0f, 0.0f, 0.0f,
-                    0.0f, 1.0f, 0.0f, 0.0f,
-                    0.0f, 0.0f, 1.0f, 0.0f,
-                    0.0f, 0.0f, 0.0f, 1.0f);
+		1.0f, 0.0f, 0.0f, 0.0f,
+		0.0f, 1.0f, 0.0f, 0.0f,
+		0.0f, 0.0f, 1.0f, 0.0f,
+		0.0f, 0.0f, 0.0f, 1.0f);
 
 const Mat4 Mat4::ZERO = Mat4(
-                    0, 0, 0, 0,
-                    0, 0, 0, 0,
-                    0, 0, 0, 0,
-                    0, 0, 0, 0 );
+		0.0f, 0.0f, 0.0f, 0.0f,
+		0.0f, 0.0f, 0.0f, 0.0f,
+		0.0f, 0.0f, 0.0f, 0.0f,
+		0.0f, 0.0f, 0.0f, 0.0f );
+
+const Mat4 Mat4::INVALID = Mat4(
+		stappler::nan(), stappler::nan(), stappler::nan(), stappler::nan(),
+		stappler::nan(), stappler::nan(), stappler::nan(), stappler::nan(),
+		stappler::nan(), stappler::nan(), stappler::nan(), stappler::nan(),
+		stappler::nan(), stappler::nan(), stappler::nan(), stappler::nan() );
 
 NS_LAYOUT_END

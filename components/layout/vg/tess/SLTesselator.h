@@ -135,18 +135,6 @@ void tessDeleteTess( TESStesselator *tess );
 TESShalfEdge * tessAddContour( TESStesselator *tess, const TESSVec2* pointer, int count );
 TESShalfEdge * tessContinueContour( TESStesselator *tess, TESShalfEdge * e, const TESSVec2* pointer, int count );
 
-// tessTesselate() - tesselate contours.
-// Parameters:
-//   tess - pointer to tesselator object.
-//   windingRule - winding rules used for tesselation, must be one of TessWindingRule.
-//   elementType - defines the tesselation result element type, must be one of TessElementType.
-//   polySize - defines maximum vertices per polygons if output is polygons.
-//   vertexSize - defines the number of coordinates in tesselation result vertex, must be 2 or 3.
-//   normal - defines the normal of the input contours, of null the normal is calculated automatically.
-// Returns:
-//   1 if succeed, 0 if failed.
-int tessTesselate( TESStesselator *tess, int windingRule, int elementType);
-
 typedef struct TESSColor {
 	uint8_t r;
 	uint8_t g;
@@ -181,6 +169,21 @@ TESSResult * tessVecResultTriangles(TESStesselator **tess, int count);
 TESSResult * tessResultTriangles(TESStesselator *tess, int windingRule, TESSColor color);
 
 void tessLog(const char *);
+
+
+typedef struct TESSResultInterface {
+	void *target;
+	int windingRule;
+	TESSreal antialiasValue;
+	void (*setVertexCount) (void *, int vertexes, int faces);
+
+	// vertexValue used declares desired opacity for hinted vertexes, for contour vertexes it's always 1.0f
+	void (*pushVertex) (void *, TESSreal x, TESSreal y, TESSreal vertexValue);
+	void (*pushTriangle) (void *, TESSshort, TESSshort, TESSshort);
+} TESSResultInterface;
+
+int tessExport(TESStesselator *, TESSResultInterface *);
+
 
 #ifdef __cplusplus
 };

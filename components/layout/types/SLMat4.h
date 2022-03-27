@@ -955,6 +955,8 @@ public:
     static const Mat4 ZERO;
     /** equals to the identity matrix */
     static const Mat4 IDENTITY;
+    /** equals to a matrix full of nan() */
+    static const Mat4 INVALID;
 private:
 
     static void createBillboardHelper(const Vec3& objectPosition, const Vec3& cameraPosition,

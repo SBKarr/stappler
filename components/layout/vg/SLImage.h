@@ -36,11 +36,6 @@ NS_LAYOUT_BEGIN
 
 class Image : public Subscription {
 public:
-	struct PathXRef {
-		String id;
-		Vec2 pos;
-	};
-
 	class PathRef : public Ref {
 	public:
 		virtual ~PathRef();
@@ -202,7 +197,7 @@ public:
 		for (auto &it : _drawOrder) {
 			auto pathIt = _paths.find(it.id);
 			if (pathIt != _paths.end()) {
-				cb(pathIt->second, it.pos);
+				cb(pathIt->second, it.mat);
 			}
 		}
 	}

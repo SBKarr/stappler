@@ -565,7 +565,7 @@ uint16_t FormatterFontSource::getFontHeight(FontLayoutId id) {
 	return l->second.data->getHeight();
 }
 
-int16_t FormatterFontSource::getKerningAmount(FontLayoutId id, char16_t first, char16_t second) const {
+int16_t FormatterFontSource::getKerningAmount(FontLayoutId id, char16_t first, char16_t second, uint16_t face) const {
 	auto l = _layouts.find(id.get());
 	if (l == _layouts.end()) {
 		return 0;
@@ -603,13 +603,13 @@ StringView FormatterFontSource::getFontName(FontLayoutId id) {
 	return l->second.layout->getName();
 }
 
-Rc<FontData> FormatterFontSource::getData(FontLayoutId id) {
+/*Rc<FontData> FormatterFontSource::getData(FontLayoutId id) {
 	auto l = _layouts.find(id.get());
 	if (l == _layouts.end()) {
 		return nullptr;
 	}
 
 	return l->second.data;
-}
+}*/
 
 NS_LAYOUT_END

@@ -54,6 +54,10 @@ enum class DrawStyle {
 
 SP_DEFINE_ENUM_AS_MASK(DrawStyle)
 
+Size calculateImageBoxSize(const Rect &bbox, const Size &size, const BackgroundStyle &bg);
+Rect calculateImageBoxRect(const Rect &bbox, const Size &size, const BackgroundStyle &bg);
+Rect calculateImageContentRect(const Rect &bbox, const Size &size, const BackgroundStyle &bg);
+
 struct LineDrawer {
 	using Style = DrawStyle;
 

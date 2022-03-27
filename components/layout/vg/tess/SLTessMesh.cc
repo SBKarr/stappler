@@ -29,17 +29,7 @@
 ** Author: Eric Veach, July 1994.
 */
 
-//#include "tesos.h"
-#include <stddef.h>
-#include <assert.h>
-#include <stdint.h>
-#include "SLTessGeom.h"
-#include "SLTessMesh.h"
-
-TESS_OPTIMIZE
-
-#define TRUE 1
-#define FALSE 0
+#include "SLTessInternal.h"
 
 /************************ Utility Routines ************************/
 

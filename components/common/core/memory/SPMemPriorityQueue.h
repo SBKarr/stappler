@@ -386,7 +386,7 @@ protected:
 				auto target = &_free.first;
 
 				// skip preallocated nodes, that should be first in free list
-				while (!n->block) {
+				while (n && !n->block) {
 					target = &n->next;
 					n = n->next;
 				}

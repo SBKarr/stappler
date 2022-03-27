@@ -29,7 +29,7 @@ THE SOFTWARE.
 
 #include "SPLayout.h"
 
-NS_LAYOUT_BEGIN
+namespace stappler::layout {
 
 struct Color3B;
 struct Color4B;
@@ -110,7 +110,7 @@ struct Color4B : public AllocBase {
 /**
  * RGBA color composed of 4 floats.
  */
-struct Color4F : public AllocBase {
+struct alignas(16) Color4F : public AllocBase {
 	Color4F();
 	Color4F(float _r, float _g, float _b, float _a);
 	Color4F(const Color3B& color, uint8_t);
@@ -253,8 +253,6 @@ public:
 	inline uint32_t value() const { return _value; }
 	inline uint32_t index() const { return _index; }
 
-
-
 	Color text() const;
 
 	inline Level level() const { return (_index == maxOf<uint16_t>())?Level::Unknown:((Level)(_index & 0x0F)); }
@@ -316,9 +314,104 @@ inline std::ostream & operator<<(std::ostream & stream, const Color4F & obj) {
 	return stream;
 }
 
-NS_LAYOUT_END
+}
 
-NS_SP_BEGIN
+
+#include "SLSIMD.h"
+
+namespace stappler::layout::simd_inline {
+
+#if SL_DEFAULT_SIMD == SL_DEFAULT_SIMD_NEON
+
+static void multiplyColor4F_Inline (const Color4F &a, const Color4F &b, Color4F &dst) {
+	simde_vst1q_f32(&dst.r,
+		simde_vmulq_f32(
+			simde_vld1q_f32(&a.r),
+			simde_vld1q_f32(&b.r)));
+}
+
+static void multiplyColor4FScalar_Inline (const Color4F &a, const float &b, Color4F &dst) {
+	simde_vst1q_f32(&dst.r,
+		simde_vmulq_f32(
+			simde_vld1q_f32(&a.r),
+			simde_vld1q_dup_f32(&b)));
+}
+
+static void divideColor4F_Inline (const Color4F &a, const Color4F &b, Color4F &dst) {
+#if defined(SIMDE_ARM_NEON_A64V8_NATIVE)
+	simde_vst1q_f32(&dst.r,
+		vdivq_f32(
+			simde_vld1q_f32(&a.r),
+			simde_vld1q_f32(&b.r)));
+#else
+	// vdivq_f32 is not defied in simde, use SSE-based replacement
+	simde_mm_store_ps(&dst.r,
+		simde_mm_div_ps(
+			simde_mm_load_ps(&a.r),
+			simde_mm_load_ps(&b.r)));
+#endif
+}
+
+#else
+
+inline void multiplyColor4F_Inline (const Color4F &a, const Color4F &b, Color4F &dst) {
+	simde_mm_store_ps(&dst.r,
+		simde_mm_mul_ps(
+			simde_mm_load_ps(&a.r),
+			simde_mm_load_ps(&b.r)));
+}
+
+inline void multiplyColor4FScalar_Inline (const Color4F &a, const float &b, Color4F &dst) {
+	simde_mm_store_ps(&dst.r,
+		simde_mm_mul_ps(
+			simde_mm_load_ps(&a.r),
+			simde_mm_load_ps1(&b)));
+}
+
+inline void divideColor4F_Inline (const Color4F &a, const Color4F &b, Color4F &dst) {
+	simde_mm_store_ps(&dst.r,
+		simde_mm_div_ps(
+			simde_mm_load_ps(&a.r),
+			simde_mm_load_ps(&b.r)));
+}
+
+#endif
+
+}
+
+namespace stappler::layout {
+
+inline Color4F operator*(const Color4F &l, const Color4F &r) {
+	Color4F dst;
+	simd_inline::multiplyColor4F_Inline(l, r, dst);
+	return dst;
+}
+
+inline Color4F operator/(const Color4F &l, const Color4F &r) {
+	Color4F dst;
+	simd_inline::divideColor4F_Inline(l, r, dst);
+	return dst;
+}
+
+inline Color4F operator*(const Color4F &l, const Color4B &r) {
+	return l * Color4F(r);
+}
+
+inline Color4F operator*(const Color4B &l, const Color4F &r) {
+	return Color4F(l) * r;
+}
+
+inline Color4F operator/(const Color4F &l, const Color4B &r) {
+	return l / Color4F(r);
+}
+
+inline Color4F operator/(const Color4B &l, const Color4F &r) {
+	return Color4F(l) / r;
+}
+
+}
+
+namespace stappler {
 
 template <> inline
 layout::Color progress<layout::Color>(const layout::Color &a, const layout::Color &b, float p) {
@@ -340,6 +433,6 @@ layout::Color4F progress<layout::Color4F>(const layout::Color4F &a, const layout
 	return layout::Color4F::progress(a, b, p);
 }
 
-NS_SP_END
+}
 
 #endif /* LAYOUT_TYPES_SLCOLOR_H_ */

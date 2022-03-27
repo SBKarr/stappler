@@ -29,14 +29,7 @@
 ** Author: Eric Veach, July 1994.
 */
 
-//#include "tesos.h"
-#include <assert.h>
-#include <stdint.h>
-
-#include "SLTessGeom.h"
-#include "SLTessMesh.h"
-
-TESS_OPTIMIZE
+#include "SLTessInternal.h"
 
 int tesvertLeq( TESSvertex *u, TESSvertex *v )
 {

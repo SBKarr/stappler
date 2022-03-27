@@ -960,22 +960,24 @@ namespace style {
 		if (caps && fontVariant == style::FontVariant::SmallCaps) {
 			size -= FontSize(size.get() / 5);
 		}
-		if (size == style::FontSize::XXSmall) {
-			name += ".xxs";
-		} else if (size == style::FontSize::XSmall) {
-			name += ".xs";
-		} else if (size == style::FontSize::Small) {
-			name += ".s";
-		} else if (size == style::FontSize::Medium) {
-			name += ".m";
-		} else if (size == style::FontSize::Large) {
-			name += ".l";
-		} else if (size == style::FontSize::XLarge) {
-			name += ".xl";
-		} else if (size == style::FontSize::XXLarge) {
-			name += ".xxl";
-		} else {
-			name += "." + toString(size.get());
+		if (size.get() == 0) {
+			if (size == style::FontSize::XXSmall) {
+				name += ".xxs";
+			} else if (size == style::FontSize::XSmall) {
+				name += ".xs";
+			} else if (size == style::FontSize::Small) {
+				name += ".s";
+			} else if (size == style::FontSize::Medium) {
+				name += ".m";
+			} else if (size == style::FontSize::Large) {
+				name += ".l";
+			} else if (size == style::FontSize::XLarge) {
+				name += ".xl";
+			} else if (size == style::FontSize::XXLarge) {
+				name += ".xxl";
+			} else {
+				name += "." + toString(size.get());
+			}
 		}
 
 		switch (fontStyle) {

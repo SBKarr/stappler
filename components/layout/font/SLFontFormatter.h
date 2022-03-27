@@ -271,6 +271,7 @@ protected:
 	bool opticalAlignment = true;
 	bool emplaceAllChars = false;
 
+	uint16_t faceId = 0;
 	char16_t b = 0;
 	char16_t c = 0;
 

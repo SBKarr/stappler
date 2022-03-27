@@ -301,11 +301,10 @@ public:
 	virtual FontLayoutId getLayout(const FontParameters &f, float scale) = 0;
 	virtual void addString(FontLayoutId, const FontCharString &) = 0;
 	virtual uint16_t getFontHeight(FontLayoutId) = 0;
-	virtual int16_t getKerningAmount(FontLayoutId, char16_t first, char16_t second) const = 0;
+	virtual int16_t getKerningAmount(FontLayoutId, char16_t first, char16_t second, uint16_t face) const = 0;
 	virtual Metrics getMetrics(FontLayoutId) = 0;
 	virtual CharLayout getChar(FontLayoutId, char16_t, uint16_t &face) = 0;
 	virtual StringView getFontName(FontLayoutId) = 0;
-	virtual Rc<FontData> getData(FontLayoutId) = 0;
 };
 
 class FormatterFontSource : public FormatterSourceInterface {
@@ -317,11 +316,10 @@ public:
 	virtual FontLayoutId getLayout(const FontParameters &f, float scale) override;
 	virtual void addString(FontLayoutId, const FontCharString &) override;
 	virtual uint16_t getFontHeight(FontLayoutId) override;
-	virtual int16_t getKerningAmount(FontLayoutId, char16_t first, char16_t second) const override;
+	virtual int16_t getKerningAmount(FontLayoutId, char16_t first, char16_t second, uint16_t face) const override;
 	virtual Metrics getMetrics(FontLayoutId) override;
 	virtual CharLayout getChar(FontLayoutId, char16_t, uint16_t &) override;
 	virtual StringView getFontName(FontLayoutId) override;
-	virtual Rc<FontData> getData(FontLayoutId) override;
 
 protected:
 	struct LayoutData {

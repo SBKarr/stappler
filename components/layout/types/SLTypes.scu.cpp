@@ -47,6 +47,7 @@ THE SOFTWARE.
 #include "SLDraw.cc"
 #include "SLPath.cc"
 #include "SLImage.cc"
+#include "SLSvgReader.cc"
 
 SP_EXTERN_C void tessLog(const char *msg) {
 	stappler::log::text("Tess", msg);

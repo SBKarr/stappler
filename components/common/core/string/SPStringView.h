@@ -1644,4 +1644,35 @@ inline int compareCaseInsensivive(const L &l, const R &r) {
 
 NS_SP_EXT_END(string)
 
+namespace std {
+
+template <>
+struct hash<stappler::StringView> {
+	hash() { }
+
+	size_t operator() (const stappler::StringView &value) const noexcept {
+		return hash<string_view>()(string_view(value.data(), value.size()));
+	}
+};
+
+template <>
+struct hash<stappler::StringViewUtf8> {
+	hash() { }
+
+	size_t operator() (const stappler::StringViewUtf8 &value) const noexcept {
+		return hash<string_view>()(string_view(value.data(), value.size()));
+	}
+};
+
+template <>
+struct hash<stappler::WideStringView> {
+	hash() { }
+
+	size_t operator() (const stappler::WideStringView &value) const noexcept {
+		return hash<u16string_view>()(u16string_view(value.data(), value.size()));
+	}
+};
+
+}
+
 #endif /* COMMON_STRING_SPSTRINGVIEW_H_ */

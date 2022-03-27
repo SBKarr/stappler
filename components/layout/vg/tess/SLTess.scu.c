@@ -2,7 +2,7 @@
 // PVS-Studio Static Code Analyzer for C, C++ and C#: http://www.viva64.com
 
 /**
-Copyright (c) 2017 Roman Katuntsev <sbkarr@stappler.org>
+Copyright (c) 2017-2022 Roman Katuntsev <sbkarr@stappler.org>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -23,9 +23,14 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 **/
 
+#include "SLTessInternal.h"
+
+TESS_OPTIMIZE
+
 #include "SLTessDict.cc"
 #include "SLTessGeom.cc"
 #include "SLTessMesh.cc"
 #include "SLTessPriorityq.cc"
 #include "SLTessSweep.cc"
 #include "SLTessTess.cc"
+#include "SLTessExport.cc"

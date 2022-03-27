@@ -22,6 +22,68 @@
 #include "SLMat4.h"
 #include "SLVec4.h"
 
+#include "SLSIMD.h"
+
+namespace stappler::layout::simd_inline {
+
+#if SL_DEFAULT_SIMD == SL_DEFAULT_SIMD_NEON
+
+static void multiplyVec4_Inline (const Vec4 &a, const Vec4 &b, Vec4 &dst) {
+	simde_vst1q_f32(&dst.x,
+		simde_vmulq_f32(
+			simde_vld1q_f32(&a.x),
+			simde_vld1q_f32(&b.x)));
+}
+
+static void multiplyVec4Scalar_Inline (const Vec4 &a, const float &b, Vec4 &dst) {
+	simde_vst1q_f32(&dst.x,
+		simde_vmulq_f32(
+			simde_vld1q_f32(&a.x),
+			simde_vld1q_dup_f32(&b)));
+}
+
+static void divideVec4_Inline (const Vec4 &a, const Vec4 &b, Vec4 &dst) {
+#if defined(SIMDE_ARM_NEON_A64V8_NATIVE)
+	simde_vst1q_f32(&dst.x,
+		vdivq_f32(
+			simde_vld1q_f32(&a.x),
+			simde_vld1q_f32(&b.x)));
+#else
+	// vdivq_f32 is not defied in simde, use SSE-based replacement
+	SL_SSE_STORE_VEC4(dst,
+		simde_mm_div_ps(
+			SL_SSE_LOAD_VEC4(a),
+			SL_SSE_LOAD_VEC4(b)));
+#endif
+}
+
+#else
+
+inline void multiplyVec4_Inline (const Vec4 &a, const Vec4 &b, Vec4 &dst) {
+	SL_SSE_STORE_VEC4(dst,
+		simde_mm_mul_ps(
+			SL_SSE_LOAD_VEC4(a),
+			SL_SSE_LOAD_VEC4(b)));
+}
+
+inline void multiplyVec4Scalar_Inline (const Vec4 &a, const float &b, Vec4 &dst) {
+	SL_SSE_STORE_VEC4(dst,
+		simde_mm_mul_ps(
+			SL_SSE_LOAD_VEC4(a),
+			simde_mm_load_ps1(&b)));
+}
+
+inline void divideVec4_Inline (const Vec4 &a, const Vec4 &b, Vec4 &dst) {
+	SL_SSE_STORE_VEC4(dst,
+		simde_mm_div_ps(
+				SL_SSE_LOAD_VEC4(a),
+				SL_SSE_LOAD_VEC4(b)));
+}
+
+#endif
+
+}
+
 NS_LAYOUT_BEGIN
 
 inline const Vec4 Vec4::operator+(const Vec4& v) const {
@@ -94,6 +156,22 @@ inline const Vec4 operator*(float x, const Vec4& v) {
 	Vec4 result(v);
 	result.scale(x);
 	return result;
+}
+
+inline void Vec4::scale(float scalar) {
+	simd_inline::multiplyVec4Scalar_Inline(*this, scalar, *this);
+}
+
+inline Vec4 operator*(const Vec4 &l, const Vec4 &r) {
+	Vec4 dst;
+	simd_inline::multiplyVec4_Inline(l, r, dst);
+	return dst;
+}
+
+inline Vec4 operator/(const Vec4 &l, const Vec4 &r) {
+	Vec4 dst;
+	simd_inline::divideVec4_Inline(l, r, dst);
+	return dst;
 }
 
 inline std::basic_ostream<char> &

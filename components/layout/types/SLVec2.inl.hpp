@@ -183,10 +183,22 @@ template <typename Callback>
 inline bool Vec2::getSegmentIntersectPoint(const Vec2& A, const Vec2& B, const Vec2& C, const Vec2& D, const Callback &cb) {
 	float S, T;
 
-	if (isLineIntersect(A, B, C, D, &S, &T )&& (S > 0.0f && S < 1.0f && T > 0.0f && T < 1.0f)) {
-		// Vec2 of intersection
-		cb(Vec2(A.x + S * (B.x - A.x), A.y + S * (B.y - A.y)), S, T);
-		return true;
+	const auto minXAB = std::min(A.x, B.x);
+	const auto maxXAB = std::max(A.x, B.x);
+	const auto minYAB = std::min(A.y, B.y);
+	const auto maxYAB = std::max(A.y, B.y);
+
+	const auto minXCD = std::min(C.x, D.x);
+	const auto maxXCD = std::max(C.x, D.x);
+	const auto minYCD = std::min(C.y, D.y);
+	const auto maxYCD = std::max(C.y, D.y);
+
+	if (max(minXAB, minXCD) < min(maxXAB, maxXCD) && max(minYAB, minYCD) < min(maxYAB, maxYCD)) {
+		if (isLineIntersect(A, B, C, D, &S, &T )&& (S > 0.0f && S < 1.0f && T > 0.0f && T < 1.0f)) {
+			// Vec2 of intersection
+			cb(Vec2(A.x + S * (B.x - A.x), A.y + S * (B.y - A.y)), S, T);
+			return true;
+		}
 	}
 
 	return false;

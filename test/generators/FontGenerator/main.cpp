@@ -120,8 +120,8 @@ void sp_android_terminate () {
 int _spMain(argc, argv) {
 	std::set_terminate(sp_android_terminate);
 
-	String filePrefix = "XLFont";
-	String namespaceBegin = "namespace stappler::xenolith {";
+	String filePrefix = "XLResourceFont";
+	String namespaceBegin = "namespace stappler::xenolith::resources::fonts {";
 	String namespaceEnd = "}";
 	String rootInclude = "XLDefine.h";
 
@@ -190,21 +190,33 @@ int _spMain(argc, argv) {
 		}
 
 		StringStream sourceFile;
-		sourceFile << LICENSE_STRING << "#include \"" << rootInclude << "\"\n\n";
-
+		sourceFile << LICENSE_STRING << "#include \"" << rootInclude << "\"\n";
+		sourceFile << "#include \"" << filePrefix << "Source.h\"\n\n";
 		for (auto &it : fonts) {
 			sourceFile << "#include \"" << filepath::lastComponent(it.second.path) << "\"\n";
 		}
 
-		sourceFile << "\n" << namespaceBegin << "\n\nBytesView getSystemFont(SystemFontName name) {\n"
-				"\tswitch (name) {\n";
+		sourceFile << "\n" << namespaceBegin << "\n\n";
+		sourceFile << "BytesView getFont(FontName name) {\n"
+				"\tswitch (name) {\n\tcase FontName::None: return BytesView(); break;\n";
 
 		for (auto &it : fonts) {
-			sourceFile << "\t\tcase SystemFontName::" << it.second.title
+			sourceFile << "\tcase FontName::" << it.second.title
 					<< ": return BytesView(s_font_" << it.second.title << ", " << it.second.data.size() << "); break;\n";
 		}
 
-		sourceFile << "\t}\n\n\treturn BytesView();\n}\n\n" << namespaceEnd << "\n";
+		sourceFile << "\t}\n\n\treturn BytesView();\n}\n\n";
+
+		sourceFile << "StringView getFontName(FontName name) {\n"
+				"\tswitch (name) {\n\tcase FontName::None: return StringView(); break;\n";
+
+		for (auto &it : fonts) {
+			sourceFile << "\tcase FontName::" << it.second.title
+					<< ": return StringView(\"" << it.second.title << "\"); break;\n";
+		}
+
+		sourceFile << "\t}\n\n\treturn StringView();\n}\n\n";
+		sourceFile << namespaceEnd << "\n";
 
 		auto sourcePath = toString(dir, "/", filePrefix, "Source.cpp");
 
@@ -213,14 +225,15 @@ int _spMain(argc, argv) {
 
 		StringStream headerFile;
 		headerFile << LICENSE_STRING << "#include \"" << rootInclude << "\"\n\n" << namespaceBegin
-				<< "\n\n\nenum class SystemFontName {";
+				<< "\n\nenum class FontName {\n\tNone,";
 		bool first = true;
 		for (auto &it : fonts) {
 			if (first) { first = false; } else { headerFile << ","; }
 			headerFile << "\n\t" << it.second.title;
 		}
 		headerFile << "\n};\n\n"
-				"BytesView getSystemFont(SystemFontName);\n"
+				"BytesView getFont(FontName);\n"
+				"StringView getFontName(FontName);\n"
 				"\n" << namespaceEnd << "\n";
 
 		auto headerPath = toString(dir, "/", filePrefix, "Source.h");

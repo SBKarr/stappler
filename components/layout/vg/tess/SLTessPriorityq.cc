@@ -29,29 +29,14 @@
 ** Author: Eric Veach, July 1994.
 */
 
-//#include "tesos.h"
-#include <stdint.h>
-#include <stddef.h>
-#include <assert.h>
-#include <string.h>
-#include "SLTesselator.h"
-#include "SLTessPriorityq.h"
-
-
 #define INIT_SIZE	32
-
-#define TRUE 1
-#define FALSE 0
 
 #ifdef FOR_TRITE_TEST_PROGRAM
 #define LEQ(x,y)	(*pq->leq)(x,y)
 #else
 /* Violates modularity, but a little faster */
-#include "SLTessGeom.h"
 #define LEQ(x,y)	VertLeq((TESSvertex *)x, (TESSvertex *)y)
 #endif
-
-TESS_OPTIMIZE
 
 /* Include all the code for the regular heap-based queue here. */
 
@@ -81,11 +66,10 @@ TESS_OPTIMIZE
 * represents that key (ie. nodes[handles[i].node].handle == i).
 */
 
+#include "SLTessInternal.h"
 
 #define pqHeapMinimum(pq)	((pq)->handles[(pq)->nodes[1].handle].key)
 #define pqHeapIsEmpty(pq)	((pq)->size == 0)
-
-
 
 /* really pqHeapNewPriorityQHeap */
 PriorityQHeap *pqHeapNewPriorityQ( TESSalloc* alloc, int size, int (*leq)(PQkey key1, PQkey key2) )
