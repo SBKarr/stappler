@@ -245,7 +245,7 @@ private:
 	// unsafe
 	inline RcBase(Pointer value, bool v) : _ptr(value) { }
 
-	Pointer _ptr;
+	Pointer _ptr = nullptr;
 #if SP_REF_DEBUG
 	uint64_t _id = 0;
 #endif

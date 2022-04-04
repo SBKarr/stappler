@@ -24,7 +24,7 @@ THE SOFTWARE.
 **/
 
 #include "SPLayout.h"
-#include "SLParser.h"
+//#include "SLParser.h"
 #include "SLStyle.h"
 #include "SLRendererTypes.h"
 #include "SPString.h"

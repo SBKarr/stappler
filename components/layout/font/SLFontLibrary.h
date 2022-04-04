@@ -23,7 +23,9 @@ THE SOFTWARE.
 #ifndef LAYOUT_FONT_SLFONTLIBRARY_H_
 #define LAYOUT_FONT_SLFONTLIBRARY_H_
 
-#include "SLFont.h"
+#include "SLFontSource.h"
+
+#ifndef SP_DISABLE_FONT_LAYOUT
 
 typedef struct FT_FaceRec_ * FT_Face;
 typedef struct FT_LibraryRec_ * FT_Library;
@@ -123,19 +125,8 @@ protected:
 	FT_Library FTlibrary = nullptr;
 };
 
-struct EmplaceCharInterface {
-	uint16_t (*getX) (void *) = nullptr;
-	uint16_t (*getY) (void *) = nullptr;
-	uint16_t (*getWidth) (void *) = nullptr;
-	uint16_t (*getHeight) (void *) = nullptr;
-	void (*setX) (void *, uint16_t) = nullptr;
-	void (*setY) (void *, uint16_t) = nullptr;
-	void (*setTex) (void *, uint16_t) = nullptr;
-};
-
-Extent2 emplaceChars(const EmplaceCharInterface &, const SpanView<void *> &,
-		float totalSquare = std::numeric_limits<float>::quiet_NaN());
-
 NS_LAYOUT_END
+
+#endif
 
 #endif /* LAYOUT_FONT_SLFONTLIBRARY_H_ */

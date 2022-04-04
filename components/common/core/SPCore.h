@@ -561,8 +561,11 @@ namespace math {
 
 template<class T, class Compare> constexpr inline
 const T& clamp(const T& v, const T& lo, const T& hi, Compare comp) {
-	assert( !comp(hi, lo) );
-    return comp(v, lo) ? lo : comp(hi, v) ? hi : v;
+	if (comp(hi, lo)) {
+	    return comp(v, hi) ? hi : comp(lo, v) ? lo : v;
+	} else {
+	    return comp(v, lo) ? lo : comp(hi, v) ? hi : v;
+	}
 }
 
 template<class T> constexpr inline

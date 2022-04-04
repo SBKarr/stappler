@@ -33,4 +33,3 @@ TESS_OPTIMIZE
 #include "SLTessPriorityq.cc"
 #include "SLTessSweep.cc"
 #include "SLTessTess.cc"
-#include "SLTessExport.cc"

@@ -50,8 +50,8 @@ static constexpr uint32_t BlockThreshold = 256;
 // Align on a power of 2 boundary
 static constexpr size_t SPALIGN(size_t size, uint32_t boundary) { return math::align<size_t>(size, boundary); }
 
-// Default alignment
-static constexpr size_t SPALIGN_DEFAULT(size_t size) { return SPALIGN(size, 8); }
+// Default alignment, 16-bytes is compatible with SSE or other 128-bit SIMD
+static constexpr size_t SPALIGN_DEFAULT(size_t size) { return SPALIGN(size, 16); }
 
 static constexpr uint32_t BOUNDARY_INDEX ( 12 );
 static constexpr uint32_t BOUNDARY_SIZE ( 1 << BOUNDARY_INDEX );

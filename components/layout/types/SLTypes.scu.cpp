@@ -25,12 +25,12 @@ THE SOFTWARE.
 
 #include "SPLayout.h"
 
+#include "SLParser.cc"
 #include "SLStyle.cc"
 #include "SLStyleColors.cc"
 #include "SLStyleCompiled.cc"
 #include "SLStyleMedia.cc"
 #include "SLStyleValues.cc"
-#include "SLParser.cc"
 #include "SLReader.cc"
 #include "SLNode.cc"
 #include "SLRendererTypes.cc"
@@ -52,4 +52,3 @@ THE SOFTWARE.
 SP_EXTERN_C void tessLog(const char *msg) {
 	stappler::log::text("Tess", msg);
 }
-

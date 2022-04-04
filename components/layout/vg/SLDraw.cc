@@ -392,7 +392,7 @@ static void drawArcRecursive(LineDrawer &drawer, const EllipseData &e, float sta
 	const float d = draw_dist_sq(x01_mid, y01_mid, sx, sy);
 
 	if (fill && d < drawer.approxError) {
-        drawer.pushLine(sx, sy);
+        drawer.pushLine(sx, sy); // TODO fix line vs outline points
         fill = false;
 	}
 
@@ -412,6 +412,7 @@ static void drawArcRecursive(LineDrawer &drawer, const EllipseData &e, float sta
 	}
 
 	drawArcRecursive(drawer, e, startAngle, n_sweep, x0, y0, sx, sy, depth + 1, fill);
+	drawer.push(sx, sy);
 	drawArcRecursive(drawer, e, startAngle + n_sweep, n_sweep, sx, sy, x1, y1, depth + 1, fill);
 }
 
@@ -447,7 +448,7 @@ void LineDrawer::drawArc(float x0, float y0, float rx, float ry, float phi, bool
 	const float cx = cx_ * cos_phi - cy_ * sin_phi + (x0 + x1) / 2;
 	const float cy = cx_ * sin_phi + cy_ * cos_phi + (y0 + y1) / 2;
 
-	const float startAngle = draw_angle(1.0f, 0.0f, - (x1_ - cx_) / rx, (y1_ - cy_) / ry);
+	float startAngle = draw_angle(1.0f, 0.0f, - (x1_ - cx_) / rx, (y1_ - cy_) / ry);
 	float sweepAngle = draw_angle((x1_ - cx_) / rx, (y1_ - cy_) / ry, (-x1_ - cx_) / rx, (-y1_ - cy_) / ry);
 
 	sweepAngle = (largeArc)
@@ -455,8 +456,33 @@ void LineDrawer::drawArc(float x0, float y0, float rx, float ry, float phi, bool
 			: std::min(fabsf(sweepAngle), float(M_PI * 2 - fabsf(sweepAngle)));
 
 	if (rx > std::numeric_limits<float>::epsilon() && ry > std::numeric_limits<float>::epsilon()) {
-		EllipseData d{ cx, cy, rx, ry, (rx * rx) / (ry * ry), cos_phi, sin_phi };
-		drawArcRecursive(*this, d, startAngle, (sweep ? -1.0f : 1.0f) * sweepAngle, x0, y0, x1, y1, 0, style == Style::FillAndStroke);
+		const float r_avg = (rx + ry) / 2.0f;
+		const float err = (r_avg - sqrtf(distanceError)) / r_avg;
+		if (err > M_SQRT1_2 - std::numeric_limits<float>::epsilon()) {
+			const float pts = ceilf(sweepAngle / acos((r_avg - sqrtf(distanceError)) / r_avg) / 2.0f);
+			EllipseData d{ cx, cy, rx, ry, (rx * rx) / (ry * ry), cos_phi, sin_phi };
+
+			sweepAngle = (sweep ? -1.0f : 1.0f) * sweepAngle;
+
+			const float segmentAngle = sweepAngle / pts;
+
+			for (uint32_t i = 0; i < uint32_t(pts); ++ i) {
+				const float sx_ = d.rx * cosf(startAngle + segmentAngle), sy_ = d.ry * sinf(startAngle + segmentAngle);
+				const float sx = d.cx - (sx_ * d.cos_phi - sy_ * d.sin_phi);
+				const float sy = d.cy + (sx_ * d.sin_phi + sy_ * d.cos_phi);
+
+				drawArcRecursive(*this, d, startAngle, segmentAngle, x0, y0, sx, sy, 0, style == Style::FillAndStroke);
+				startAngle += segmentAngle;
+
+				push(sx, sy);
+				x0 = sx; y0 = sy;
+			}
+
+			return;
+		} else {
+			EllipseData d{ cx, cy, rx, ry, (rx * rx) / (ry * ry), cos_phi, sin_phi };
+			drawArcRecursive(*this, d, startAngle, (sweep ? -1.0f : 1.0f) * sweepAngle, x0, y0, x1, y1, 0, style == Style::FillAndStroke);
+		}
 	}
 
 	push(x1, y1);

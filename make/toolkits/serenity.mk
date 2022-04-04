@@ -67,6 +67,7 @@ SERENITY_INCLUDES_OBJS += \
 	components/layout/document \
 	components/layout/vg \
 	components/layout/vg/tess \
+	components/layout/simd \
 	components/layout \
 	components/thirdparty \
 	$(APACHE_INCLUDE)

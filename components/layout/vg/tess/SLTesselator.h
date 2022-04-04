@@ -170,21 +170,6 @@ TESSResult * tessResultTriangles(TESStesselator *tess, int windingRule, TESSColo
 
 void tessLog(const char *);
 
-
-typedef struct TESSResultInterface {
-	void *target;
-	int windingRule;
-	TESSreal antialiasValue;
-	void (*setVertexCount) (void *, int vertexes, int faces);
-
-	// vertexValue used declares desired opacity for hinted vertexes, for contour vertexes it's always 1.0f
-	void (*pushVertex) (void *, TESSreal x, TESSreal y, TESSreal vertexValue);
-	void (*pushTriangle) (void *, TESSshort, TESSshort, TESSshort);
-} TESSResultInterface;
-
-int tessExport(TESStesselator *, TESSResultInterface *);
-
-
 #ifdef __cplusplus
 };
 #endif

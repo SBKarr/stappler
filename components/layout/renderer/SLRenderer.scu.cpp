@@ -26,6 +26,7 @@ THE SOFTWARE.
 #include "SPLayout.h"
 #include "SLFont.cc"
 #include "SLFontFormatter.cc"
+#include "SLFontSource.cc"
 #include "SLFontLibrary.cc"
 #include "SLBuilder.cc"
 #include "SLResultObject.cc"
@@ -37,8 +38,6 @@ THE SOFTWARE.
 #include "SLTable.cc"
 #include "SLTableBorder.cc"
 #include "SLResult.cc"
-
 #include "SLCssDocument.cc"
 #include "SLDocument.cc"
-
 #include "SLCanvas.cc"
