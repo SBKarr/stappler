@@ -41,7 +41,7 @@ struct NodeBase : public AllocPool {
 	struct Flag {
 		uintptr_t color : 1;
 		uintptr_t prealloc : 1;
-		uintptr_t count : (sizeof(uintptr_t) / 2) * 8 - 2;
+		uintptr_t index : (sizeof(uintptr_t) / 2) * 8 - 2;
 		uintptr_t size : (sizeof(uintptr_t) / 2) * 8;
 	};
 
@@ -62,8 +62,8 @@ struct NodeBase : public AllocPool {
 	inline void setSize(uintptr_t s) { flag.size = s; }
 	inline uintptr_t getSize() const { return flag.size; }
 
-	inline void setCount(uintptr_t s) { flag.count = s; }
-	inline uintptr_t getCount() const { return flag.count; }
+	inline void setIndex(uintptr_t s) { flag.index = s; }
+	inline uintptr_t getIndex() const { return flag.index; }
 
 	static inline NodeBase * min (NodeBase * x) {
 		while (x->left != 0) x = x->left;
@@ -338,6 +338,7 @@ public:
 		if (_size > 0) {
 			clear();
 		}
+		releaseTmp();
 	}
 
 	const value_allocator_type & get_allocator() const noexcept { return _allocator; }
@@ -418,19 +419,22 @@ public:
 	const_reverse_iterator crbegin() const noexcept { return const_reverse_iterator(cend()); }
 	const_reverse_iterator crend() const noexcept { return const_reverse_iterator(cbegin()); }
 
-	void clear() {
+	void clear() noexcept {
 		if (_header.left) {
 			clear_visit(static_cast<Node<Value> *>(_header.left));
 		}
 		_header.left = nullptr;
 		_header.right = nullptr;
 		_header.parent = nullptr;
-		if (_allocator.test(value_allocator_type::SecondFlag)) {
-			node_allocator_type(_allocator).__deallocate(_tmp, _size, _tmp->getSize());
-			_tmp = nullptr;
-		}
 		_size = 0;
-		_allocator.reset(value_allocator_type::SecondFlag);
+	}
+
+	void shrink_to_fit() noexcept {
+		releaseTmp();
+	}
+
+	size_t capacity() const noexcept {
+		return _size + _header.flag.size;
 	}
 
 	size_t size() const noexcept {
@@ -439,6 +443,14 @@ public:
 
 	bool empty() const noexcept {
 		return _header.left == nullptr;
+	}
+
+	void set_memory_persistent(bool value) noexcept {
+		_header.flag.prealloc = value ? 1 : 0;
+	}
+
+	bool memory_persistent() const noexcept {
+		return _header.flag.prealloc;
 	}
 
 	void swap(Tree &other) noexcept {
@@ -503,13 +515,23 @@ public:
 	}
 
 	void reserve(size_t c) {
-		if (c > _size) {
+		// requested count is greater then size + pending preallocated nodes
+		if (c > _size + _header.flag.size) {
 			allocateTmp(c - _size);
 		}
 	}
 
 protected:
 	friend class TreeDebug;
+
+	// header values has a special meanings:
+	// _header.parent - left node from root (first node of iteration)
+	// _header.right - right node from root
+	// _header.left - root node (actual root of the tree), nullptr if tree is not defined
+	// &_header (pointer to the header) - last node in iteration
+	// _header.size - extra capacity, available via _tmp
+	// _header.index - count of preallocated blocks in use
+	// _header.prealloc - flag of persistent mode (enabled if 1, disabled by default)
 
 	NodeBase _header; // root is _header.left
 	comparator_type _comp;
@@ -785,7 +807,7 @@ protected:
 
 	Node<Value> * makeInsert(Node<Value> *n, NodeBase *parent, bool isLeft) {
 		n->parent = parent;
-		if(parent) {
+		if (parent) {
 			if (isLeft) {
 				if (parent == left())
 					setleft(n);
@@ -886,15 +908,7 @@ protected:
 		if (target->right) {
 			clear_visit(static_cast<Node<Value> *>(target->right));
 		}
-		if (_allocator.test(value_allocator_type::SecondFlag)) {
-			destroyNode(target);
-			return;
-		}
-
-		_allocator.destroy(target->value.ptr());
-		if (target->getSize()) {
-			node_allocator_type(_allocator).__deallocate(target, 1, target->getSize());
-		}
+		destroyNode(target);
 	}
 
 	void clone_visit(const Node<Value> *source, Node<Value> *target) {
@@ -1022,66 +1036,151 @@ protected:
 
 	void destroyNode(Node<Value> *n) {
 		_allocator.destroy(n->value.ptr());
-		if (_tmp) {
-			if (_allocator.test(value_allocator_type::SecondFlag)) {
-				if (n < _tmp) {
-					n->setSize(n->getSize() + _tmp->getSize());
-					_tmp = n;
-				} else {
-					_tmp->setSize(n->getSize() + _tmp->getSize());
-				}
-			} else if (n->getSize()) {
-				node_allocator_type(_allocator).__deallocate(n, 1, n->isPrealloc() ? sizeof(Node<Value>) : n->getSize());
-			}
-		} else {
-			_tmp = n;
-		}
-	}
-
-	void allocateTmp(size_t count) {
 		if (!_tmp) {
-			size_t s;
-			auto ret = node_allocator_type(_allocator).__allocate(count, s);
-			auto n = ret;
-			for (size_t i = 0; i < count; ++ i) {
-				n->setPrealloc(true);
-				n->setCount(count - i - 1);
-				if (i < count - 1) {
-					n->setSize(sizeof(Node<Value>));
-					s -= sizeof(Node<Value>);
-				} else {
-					n->setSize(s);
-				}
-				++ n;
-			}
-			if (_size == 0) {
-				_allocator.set(value_allocator_type::AllocFlag::SecondFlag);
-			}
-			_tmp = ret;
+			// no saved node - hold one
+			n->parent = nullptr;
+			_tmp = n;
+			++ _header.flag.size; // increment capacity counter
+		} else if (n->isPrealloc() || _header.flag.prealloc) {
+			// node was preallocated - hold it in chain
+			n->parent = _tmp;
+			_tmp = n;
+			++ _header.flag.size; // increment capacity counter
+		} else {
+			// deallocate node
+			node_allocator_type(_allocator).__deallocate(n, 1, n->getSize());
 		}
 	}
 
 	Node<Value> * allocateNode() {
 		if (_tmp) {
 			auto ret = _tmp;
-			if (_tmp->getCount()) {
-				_tmp->setCount(0);
-				_tmp = _tmp + 1;
-			} else {
-				_tmp = nullptr;
-			}
+			_tmp = (Node<Value> *)ret->parent;
+			-- _header.flag.size; // decrement capacity counter
 			return ret;
 		} else {
 			size_t s;
-			if (_allocator.test(value_allocator_type::SecondFlag)) {
-				_allocator.reset(value_allocator_type::SecondFlag);
-			}
 			auto ret = node_allocator_type(_allocator).__allocate(1, s);
 			ret->setSize(s);
-			ret->setCount(0);
 			ret->setPrealloc(false);
 			return ret;
 		}
+	}
+
+	void allocateTmp(size_t count) {
+		// preallocate new n nodes
+
+		uintptr_t preallocIdx = ++ _header.flag.index;
+		_header.flag.size += count; // increment capacity counter
+
+		size_t s;
+		auto ret = node_allocator_type(_allocator).__allocate(count, s);
+		auto n = ret;
+
+		for (size_t i = 0; i < count; ++ i) {
+			NodeBase *tmpN = n;
+			tmpN->parent = n + 1;
+			tmpN->setPrealloc(true);
+			tmpN->setIndex(preallocIdx);
+			if (i < count - 1) {
+				tmpN->parent = n + 1;
+				tmpN->setSize(sizeof(Node<Value>));
+				s -= sizeof(Node<Value>);
+			} else {
+				tmpN->parent = _tmp;
+				n->setSize(s);
+			}
+			++ n;
+		}
+		_tmp = ret;
+	}
+
+	void releaseTmp() {
+		// release any tmp nodes if possible
+		// preallocated nodes released in batch as acquired, only if tree is empty
+
+		struct PreallocatedData {
+			Node<Value> *head = (Node<Value> *)maxOf<uintptr_t>();
+			size_t count = 0;
+			size_t size = 0;
+		};
+
+		if (_size != 0) {
+			// release only free tmps;
+			auto ptr = &_tmp;
+			while (*ptr) {
+				if (!(*ptr)->isPrealloc()) {
+					node_allocator_type(_allocator).__deallocate(*ptr, 1, (*ptr)->getSize());
+					*ptr = (Node<Value> *)(*ptr)->parent;
+					-- _header.flag.size;
+				} else {
+					ptr = (Node<Value> **)&((*ptr)->parent);
+				}
+			}
+			return;
+		}
+
+		if (_header.flag.index == 0) {
+			// no preallocated blocks
+			while (_tmp) {
+				auto ptr = _tmp;
+				_tmp = (Node<Value> *)_tmp->parent;
+				node_allocator_type(_allocator).__deallocate(ptr, 1, ptr->getSize());
+				-- _header.flag.size;
+			}
+			_tmp = nullptr;
+		} else if (_header.flag.index == 1) {
+			// all preallocated nodes should be in tmp chain, only one preallocated block
+			PreallocatedData data;
+
+			while (_tmp) {
+				auto ptr = _tmp;
+				_tmp = (Node<Value> *)_tmp->parent;
+
+				if (ptr->isPrealloc()) {
+					if (ptr < data.head) {
+						data.head = ptr;
+					}
+					++ data.count;
+					data.size += ptr->getSize();
+				} else {
+					node_allocator_type(_allocator).__deallocate(ptr, 1, ptr->getSize());
+					-- _header.flag.size;
+				}
+			}
+			if (data.head != (Node<Value> *)maxOf<uintptr_t>()) {
+				_header.flag.size -= data.count;
+				node_allocator_type(_allocator).__deallocate(data.head, data.count, data.size);
+			}
+		} else {
+			// multiple preallocated blocks make things complicated
+			// VLA, compilers should support C99,
+			// MSVC - fuck off, use new[] or std::vector=)
+			PreallocatedData data[_header.flag.index];
+
+			while (_tmp) {
+				auto ptr = _tmp;
+				_tmp = (Node<Value> *)_tmp->parent;
+
+				if (ptr->isPrealloc()) {
+					if (ptr < data[ptr->getIndex() - 1].head) {
+						data[ptr->getIndex() - 1].head = ptr;
+					}
+					++ data[ptr->getIndex() - 1].count;
+					data[ptr->getIndex() - 1].size += ptr->getSize();
+				} else {
+					node_allocator_type(_allocator).__deallocate(ptr, 1, ptr->getSize());
+					-- _header.flag.size;
+				}
+			}
+			for (size_t i = 0; i < _header.flag.index; ++ i) {
+				if (data[i].head != (Node<Value> *)maxOf<uintptr_t>()) {
+					_header.flag.size -= data[i].count;
+					node_allocator_type(_allocator).__deallocate(data[i].head, data[i].count, data[i].size);
+				}
+			}
+		}
+		_tmp = nullptr;
 	}
 };
 

@@ -179,6 +179,7 @@ protected:
 	bool _debug = false;
 	bool _reuse = true;
 	bool _shared = false;
+	bool _verifyHost = true;
 
 	Vector<String> _sendedHeaders;
 	Vector<String> _recievedHeaders;

@@ -584,6 +584,18 @@ const Mat4 &Image::PathRef::getTransform() const {
 	return path?path->getTransform():Mat4::IDENTITY;
 }
 
+Image::PathRef &Image::PathRef::setWindingRule(Winding value) {
+	if (path) {
+		path->setWindingRule(value);
+		image->setDirty();
+	}
+	return *this;
+}
+
+Winding Image::PathRef::getWindingRule() const {
+	return path?path->getWindingRule():Winding::EvenOdd;
+}
+
 Image::PathRef & Image::PathRef::clear() {
 	if (path) {
 		path->clear();

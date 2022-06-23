@@ -37,7 +37,7 @@ bool AppLayout::init() {
 		return false;
 	}
 
-	auto button = Rc<material::IconSprite>::create();
+	/*auto button = Rc<material::IconSprite>::create();
 	button->setColor(material::Color::Green_500);
 	button->setAnchorPoint(Anchor::Middle);
 	button->setIconName(material::IconName::Action_3d_rotation);
@@ -47,7 +47,17 @@ bool AppLayout::init() {
 		auto t = _button->getNodeToParentTransform();
 		std::cout <<  t.m[12] << " " <<  t.m[13] << " " << _button->getAnchorPointInPoints() << "\n";
 		_button->setIconName(material::IconName(toInt(_button->getIconName()) + 1));
-	})));
+	})));*/
+
+	auto node = Rc<draw::PathNode>::create(100, 150);
+	node->setAntialiased(false);
+	node->addPath().moveTo(4.670644,147.500198).lineTo(104.670647,-2.499797).lineTo(-4.670644,-2.499797).lineTo(95.329353,147.500198)
+		.moveTo(-4.670644,152.499802).lineTo(104.670647,-2.499797).lineTo(4.670644,2.499797).lineTo(104.670647,152.499802)
+			.closePath().setWindingRule(layout::Winding::EvenOdd);
+	node->setContentSize(Size(100, 150));
+	node->setAnchorPoint(Anchor::Middle);
+	node->setColor(Color::Black);
+	_node = addChildNode(node);
 
 	return true;
 }
@@ -55,7 +65,8 @@ bool AppLayout::init() {
 void AppLayout::onContentSizeDirty() {
 	Layout::onContentSizeDirty();
 
-	_button->setPosition(_contentSize.width / 2.0f, _contentSize.height / 2.0f);
+	//_button->setPosition(_contentSize.width / 2.0f, _contentSize.height / 2.0f);
+	_node->setPosition(_contentSize.width / 2.0f, _contentSize.height / 4.0f);
 }
 
 NS_SP_EXT_END(app)

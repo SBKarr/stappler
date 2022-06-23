@@ -277,6 +277,8 @@ void Canvas::pathBegin(const Path &path) {
 }
 
 void Canvas::pathClose(const Path &path) {
+	_line.drawClose();
+
 	if (!_line.empty()) {
 		pushContour(path, true);
 	}

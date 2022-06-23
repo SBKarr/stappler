@@ -34,6 +34,7 @@ public:
 
 protected:
 	material::IconSprite *_button = nullptr;
+	draw::PathNode *_node = nullptr;
 };
 
 NS_SP_EXT_END(app)

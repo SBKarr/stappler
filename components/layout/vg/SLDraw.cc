@@ -488,6 +488,12 @@ void LineDrawer::drawArc(float x0, float y0, float rx, float ry, float phi, bool
 	push(x1, y1);
 }
 
+void LineDrawer::drawClose() {
+	if (line.size() > 2) {
+		processIntersects(line.front().x, line.front().y);
+	}
+}
+
 void LineDrawer::clear() {
 	line.clear();
 	outline.clear();
@@ -522,28 +528,32 @@ void LineDrawer::push(float x, float y) {
 	}
 }
 
+void LineDrawer::processIntersects(float x, float y) {
+	Vec2 A(line.back().x, line.back().y);
+	Vec2 B(x, y);
+
+	for (size_t i = 0; i < line.size() - 2; ++ i) {
+		auto C = Vec2(line[i].x, line[i].y);
+		auto D = Vec2(line[i + 1].x, line[i + 1].y);
+
+		Vec2::getSegmentIntersectPoint(A, B, C, D,
+				[&] (const Vec2 &P, float S, float T) {
+			if (S > 0.5f) { S = 1.0f - S; }
+			if (T > 0.5f) { T = 1.0f - T; }
+
+			auto dsAB = A.distanceSquared(B) * S * S;
+			auto dsCD = C.distanceSquared(D) * T * T;
+
+			if (dsAB > approxError && dsCD > approxError) {
+				line.push_back(TESSVec2{P.x, P.y});
+			}
+		});
+	}
+}
+
 void LineDrawer::pushLinePointWithIntersects(float x, float y) {
 	if (line.size() > 2) {
-		Vec2 A(line.back().x, line.back().y);
-		Vec2 B(x, y);
-
-		for (size_t i = 0; i < line.size() - 2; ++ i) {
-			auto C = Vec2(line[i].x, line[i].y);
-			auto D = Vec2(line[i + 1].x, line[i + 1].y);
-
-			Vec2::getSegmentIntersectPoint(A, B, C, D,
-					[&] (const Vec2 &P, float S, float T) {
-				if (S > 0.5f) { S = 1.0f - S; }
-				if (T > 0.5f) { T = 1.0f - T; }
-
-				auto dsAB = A.distanceSquared(B) * S * S;
-				auto dsCD = C.distanceSquared(D) * T * T;
-
-				if (dsAB > approxError && dsCD > approxError) {
-					line.push_back(TESSVec2{P.x, P.y});
-				}
-			});
-		}
+		processIntersects(x, y);
 	}
 
 	line.push_back(TESSVec2{x, y});

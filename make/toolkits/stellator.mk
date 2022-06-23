@@ -38,7 +38,8 @@ STELLATOR_SRCS_OBJS +=
 STELLATOR_INCLUDES_DIRS += \
 	components/common \
 	components/stellator \
-	components/spug
+	components/spug \
+	components/layout/simd
 
 STELLATOR_INCLUDES_OBJS += \
 	$(OSTYPE_INCLUDE) \

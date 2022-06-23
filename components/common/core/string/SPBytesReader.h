@@ -97,7 +97,7 @@ public:
 	void clear() { len = 0; }
 	bool empty() const { return len == 0 || !ptr; }
 
-	bool terminated() const { return ptr[len] == 0; }
+	bool terminated() const { return ptr && ptr[len] == 0; }
 
 protected:
 	const CharType *ptr;

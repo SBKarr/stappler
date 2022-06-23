@@ -111,7 +111,12 @@ public:
 	allocator_type get_allocator() const noexcept { return _tree.get_allocator(); }
 	bool empty() const noexcept { return _tree.empty(); }
 	size_t size() const noexcept { return _tree.size(); }
+	size_t capacity() const noexcept { return _tree.capacity(); }
 	void clear() { _tree.clear(); }
+	void shrink_to_fit() { _tree.shrink_to_fit(); }
+
+	void set_memory_persistent(bool value) noexcept { _tree.set_memory_persistent(value); }
+	bool memory_persistent() const noexcept { return _tree.memory_persistent(); }
 
 	Pair<iterator,bool> insert( const value_type& value ) {
 		return emplace(value);

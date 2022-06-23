@@ -396,9 +396,11 @@ HandlerMap::HandlerInfo::HandlerInfo(const mem::StringView &name, Request::Metho
 			fragments.emplace_back(Fragment::Text, tmp);
 		}
 		if (p.is(':')) {
-			auto ptrn = p.readUntil<mem::StringView::Chars<'/'>>();
+			auto tmp = p;
+			++ p;
+			auto ptrn = p.readUntil<mem::StringView::Chars<'/', '.', ':', '#', '?', ','>>();
 			if (!ptrn.empty()) {
-				fragments.emplace_back(Fragment::Pattern, ptrn);
+				fragments.emplace_back(Fragment::Pattern, mem::StringView(tmp.data(), ptrn.size() + 1));
 			}
 		}
 	}

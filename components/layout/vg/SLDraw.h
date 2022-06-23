@@ -77,11 +77,13 @@ struct LineDrawer {
 	void drawQuadBezier(float x0, float y0, float x1, float y1, float x2, float y2);
 	void drawCubicBezier(float x0, float y0, float x1, float y1, float x2, float y2, float x3, float y3);
 	void drawArc(float x0, float y0, float rx, float ry, float angle, bool largeArc, bool sweep, float x, float y);
+	void drawClose();
 
 	void pushLine(float x, float y);
 	void pushOutline(float x, float y);
 	void push(float x, float y);
 
+	void processIntersects(float x, float y);
 	void pushLinePointWithIntersects(float x, float y);
 
 	bool empty() const { return line.empty() && outline.empty(); }

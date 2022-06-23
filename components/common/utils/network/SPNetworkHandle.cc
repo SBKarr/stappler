@@ -337,8 +337,13 @@ bool NetworkHandle::setupCurl(CURL *curl, char *errorBuffer) {
 	SetOpt(check, curl, CURLOPT_SSL_VERIFYPEER, 0L);
 	SetOpt(check, curl, CURLOPT_SSL_VERIFYHOST, 0L);
 #else
-	SetOpt(check, curl, CURLOPT_SSL_VERIFYPEER, 1L);
-	SetOpt(check, curl, CURLOPT_SSL_VERIFYHOST, 2L);
+	if (_verifyHost) {
+		SetOpt(check, curl, CURLOPT_SSL_VERIFYPEER, 1L);
+		SetOpt(check, curl, CURLOPT_SSL_VERIFYHOST, 2L);
+	} else {
+		SetOpt(check, curl, CURLOPT_SSL_VERIFYPEER, 0L);
+		SetOpt(check, curl, CURLOPT_SSL_VERIFYHOST, 0L);
+	}
 #endif
 
 	SetOpt(check, curl, CURLOPT_URL, _url.c_str());
@@ -840,7 +845,9 @@ size_t NetworkHandle::writeHeaders(const char *data, size_t size) {
 			}
 		}
 
-		_recievedHeaders.push_back(String(data, size));
+		String str(data, size);
+		string::trim(str);
+		_recievedHeaders.push_back(move(str));
 	}
 
     return size;

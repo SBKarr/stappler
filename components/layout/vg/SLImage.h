@@ -106,6 +106,9 @@ public:
 		PathRef & applyTransform(const Mat4 &);
 		const Mat4 &getTransform() const;
 
+		PathRef &setWindingRule(Winding);
+		Winding getWindingRule() const;
+
 		PathRef & clear();
 
 		StringView getId() const;

@@ -73,6 +73,105 @@ struct MemMapTest : MemPoolTest {
 		do { auto it = setTest.find("Five"); if (it == setTest.end()) { std::cout << "Failed Five\n"; } } while (0);
 		do { auto it = setTest.find("Nine"); if (it == setTest.end()) { std::cout << "Failed Nine\n"; } } while (0);*/
 
+		runTest(stream, "lower_bound test", count, passed, [&] {
+			memory::set<int> values;
+			values.emplace(1);
+			values.emplace(3);
+
+			auto it = values.lower_bound(4);
+			std::cout << *(--it) << "\n";
+			return  *(--it) == 3;
+		});
+
+		runTest(stream, "persistent test", count, passed, [&] {
+			memory::map<size_t, String> data; data.reserve(4);
+			data.set_memory_persistent(true);
+			data.emplace(4, "Four");
+			data.emplace(1, "One");
+			data.emplace(2, "Two");
+			data.emplace(9, "Nine");
+
+			data.emplace(5, "Five");
+			data.emplace(4, "FourFour");
+			data.emplace(6, "Six");
+			data.emplace(7, "Seven");
+
+			stream << data.capacity() << " " << data.size() << " ";
+
+			if (data.capacity() != data.size() && data.size() != 7) {
+				return false;
+			}
+
+			data.erase(7);
+			data.erase(5);
+			data.erase(4);
+			data.erase(6);
+			data.erase(9);
+
+			// should remove extra nodes but not preallocated nodes
+			data.shrink_to_fit();
+
+			stream << data.capacity() << " " << data.size() << " ";
+
+			if (data.capacity() > 4) {
+				return false;
+			}
+
+			data.emplace(9, "Nine");
+			data.emplace(5, "Five");
+			data.emplace(4, "FourFour");
+			data.emplace(6, "Six");
+			data.emplace(7, "Seven");
+
+			data.clear();
+
+			stream << data.capacity() << " " << data.size() << " ";
+
+			if (data.capacity() == 7 && data.size() != 0) {
+				return false;
+			}
+
+			data.shrink_to_fit();
+
+			stream << data.capacity() << " " << data.size();
+
+			return data.capacity() == 0 && data.size() == 0;
+		});
+
+		runTest(stream, "shrink_to_fit test", count, passed, [&] {
+			memory::map<size_t, String> data; data.reserve(6);
+			data.emplace(4, "Four");
+			data.emplace(1, "One");
+			data.emplace(2, "Two");
+			data.emplace(9, "Nine");
+
+			data.emplace(5, "Five");
+			data.emplace(4, "FourFour");
+			data.emplace(6, "Six");
+			data.emplace(7, "Seven");
+
+			stream << data.capacity() << " " << data.size() << " ";
+
+			if (data.capacity() != data.size() && data.size() != 7) {
+				return false;
+			}
+
+			data.clear();
+
+			stream << data.capacity() << " " << data.size() << " ";
+
+			// extra node may or may not persists, but preallocated nodes should be preserved
+			if (data.capacity() < 6 && data.size() != 0) {
+				return false;
+			}
+
+			data.shrink_to_fit();
+
+			stream << data.capacity() << " " << data.size();
+
+			return data.capacity() == 0 && data.size() == 0;
+		});
+
 		memory::set<int64_t> intSetTest;
 		intSetTest.emplace(2);
 		intSetTest.emplace(4);
@@ -155,6 +254,8 @@ struct MemMapTest : MemPoolTest {
 				stream << it.first << " " << it.second << " ";
 			}
 
+			stream << data.capacity() << " " << data.size();
+
 			return vec == data;
 		});
 
@@ -166,7 +267,6 @@ struct MemMapTest : MemPoolTest {
 
 			return data.find(&vec) != data.end() && data.find(&vec2) != data.end();
 		});
-
 
 		_desc = stream.str();
 
