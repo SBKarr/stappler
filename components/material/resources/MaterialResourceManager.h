@@ -87,7 +87,7 @@ public:
 	void addFontStyle(const String &, const UserFontStyle &);
 
 	template <typename ... Args>
-	void addFontStyle(const String &name, const String &family, uint8_t size, Args && ... args) {
+	void addFontStyle(const String &name, const String &family, LabelParameters::FontSize size, Args && ... args) {
 		addFontStyle(name, UserFontStyle::construct(family, size, std::forward<Args>(args)...));
 	}
 

@@ -47,26 +47,26 @@ public:
 	: _buf(alloc) {
 		_buf.resize(block, 0);
 
-	    char *base = &_buf.front();
+		char_type *base = &_buf.front();
 	    streambuf_type::setp(base, base + _buf.size() - 1); // -1 to make overflow() easier
 	}
 	basic_ostringbuf(CharType *ptr, size_type block, const allocator_type &alloc = allocator_type()) noexcept
 	: _buf(alloc) {
 		_buf.assign_weak(ptr, block);
 
-	    char *base = &_buf.front();
+		char_type *base = &_buf.front();
 	    streambuf_type::setp(base, base + _buf.size() - 1); // -1 to make overflow() easier
 	}
 	basic_ostringbuf(basic_ostringbuf &&other, const allocator_type &alloc = allocator_type()) noexcept
 	: _buf(std::move(other._buf), alloc)  {
-	    char *base = &_buf.front();
+		char_type *base = &_buf.front();
 		auto diff = (_buf.size() - 1) - (other.epptr() - other.pptr());
 		streambuf_type::setp(base + diff, base + _buf.size() - 1);
 	}
 
 	basic_ostringbuf &operator=(basic_ostringbuf &&other) noexcept {
 		_buf = move(other._buf);
-		char *base = &_buf.front();
+		char_type *base = &_buf.front();
 		auto diff = (_buf.size() - 1) - (other.epptr() - other.pptr());
 		streambuf_type::setp(base + diff, base + _buf.size() - 1);
 		return *this;
@@ -120,7 +120,7 @@ protected:
 	void make_flush() {
 		auto diff = streambuf_type::pptr() - &_buf.front();
 		_buf.resize(std::max(size_type(diff * 2), basic_ostringbuf_bufsize));
-		char *base = &_buf.front();
+		char_type *base = &_buf.front();
 		streambuf_type::setp(base + diff, base + _buf.size() - 1); // -1 to make overflow() easier
 	}
 

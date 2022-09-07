@@ -1140,6 +1140,13 @@ static bool Server_processAuth(Request &rctx, StringView auth) {
 						mem::String::make_weak(source.data(), source.size()));
 				if (u) {
 					rctx.setUser(u);
+					if (u->isAdmin()) {
+						auto &args = rctx.getParsedQueryArgs();
+						if (args.hasValue("__FORCE_ROLE__")) {
+							auto role = args.getInteger("__FORCE_ROLE__");
+							rctx.setAccessRole(db::AccessRoleId(role));
+						}
+					}
 					return true;
 				}
 			}

@@ -129,7 +129,7 @@ db::sql::Driver::Handle Root::dbdOpen(apr_pool_t *p, server_rec *s) {
 	if (_dbdOpen) {
 		auto ret = _dbdOpen(p, s);
 		if (!ret) {
-			messages::debug("Root", "Failed to open DBD");
+			messages::debug("Root", "Failed to open DBD", data::Value(Server(s).getDocumentRoot()));
 		}
 		return db::sql::Driver::Handle(ret);
 	}
