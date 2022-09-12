@@ -59,7 +59,12 @@ data::Value Handle::performDataQuery() {
 	if (perform()) {
 		return stream.extract<mem::Interface>();
 	} else {
-		std::cout << stream.extract<mem::Interface>() << "\n";
+		auto val = stream.extract<mem::Interface>();
+		if (val) {
+			std::cout << "Network: fail to perform " << _url << ": " << val << "\n";
+		} else {
+			std::cout << "Network: fail to perform " << _url << "\n";
+		}
 	}
 	return data::Value();
 }
