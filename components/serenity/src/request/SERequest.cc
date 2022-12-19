@@ -65,7 +65,7 @@ struct Request::Config : public AllocPool {
 				if (str.is('?') || str.is('&')) {
 					++ str;
 				}
-				auto d = UrlView::parseArgs(str, 1_KiB);
+				auto d = UrlView::parseArgs(str, 100_KiB);
 				if (_data.empty()) {
 					_data = std::move(d);
 				} else {

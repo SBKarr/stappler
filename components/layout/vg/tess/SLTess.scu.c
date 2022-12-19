@@ -25,7 +25,7 @@ THE SOFTWARE.
 
 #include "SLTessInternal.h"
 
-//TESS_OPTIMIZE
+TESS_OPTIMIZE
 
 #include "SLTessDict.cc"
 #include "SLTessGeom.cc"
