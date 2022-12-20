@@ -139,6 +139,7 @@ public:
 	void setReuse(bool value) { _reuse = value; }
 	void setShared(bool value) { _shared = value; }
 	void setSilent(bool value) { _silent = value; }
+	void setVerifyHost(bool value) { _verifyHost = value; }
 	const StringStream &getDebugData() const { return _debugData; }
 
 	void setDownloadProgress(const ProgressCallback &callback);
@@ -179,7 +180,11 @@ protected:
 	bool _debug = false;
 	bool _reuse = true;
 	bool _shared = false;
+#if (DEBUG || LINUX)
+	bool _verifyHost = false;
+#else
 	bool _verifyHost = true;
+#endif
 
 	Vector<String> _sendedHeaders;
 	Vector<String> _recievedHeaders;

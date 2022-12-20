@@ -333,10 +333,6 @@ bool NetworkHandle::setupCurl(CURL *curl, char *errorBuffer) {
 	//SetOpt(check, curl, CURLOPT_TIMEOUT, SP_NW_READ_TIMEOUT);
 	SetOpt(check, curl, CURLOPT_CONNECTTIMEOUT, _connectTimeout);
 
-#if (DEBUG || LINUX)
-	SetOpt(check, curl, CURLOPT_SSL_VERIFYPEER, 0L);
-	SetOpt(check, curl, CURLOPT_SSL_VERIFYHOST, 0L);
-#else
 	if (_verifyHost) {
 		SetOpt(check, curl, CURLOPT_SSL_VERIFYPEER, 1L);
 		SetOpt(check, curl, CURLOPT_SSL_VERIFYHOST, 2L);
@@ -344,7 +340,6 @@ bool NetworkHandle::setupCurl(CURL *curl, char *errorBuffer) {
 		SetOpt(check, curl, CURLOPT_SSL_VERIFYPEER, 0L);
 		SetOpt(check, curl, CURLOPT_SSL_VERIFYHOST, 0L);
 	}
-#endif
 
 	SetOpt(check, curl, CURLOPT_URL, _url.c_str());
 	SetOpt(check, curl, CURLOPT_RESUME_FROM, 0); // drop byte-ranged GET
