@@ -45,6 +45,35 @@ bool NetworkHandle::perform(const Callback<bool(CURL *)> &onBeforePerform, const
 	}
 
 	ctx.code = curl_easy_perform(ctx.curl);
+
+	if (_gatherCertInfo) {
+		_certificates.clear();
+	    struct curl_certinfo *ci;
+	    auto res = curl_easy_getinfo(ctx.curl, CURLINFO_CERTINFO, (void *)&ci);
+		if (!res) {
+			_certificates.reserve(ci->num_of_certs);
+			for (int i = 0; i < ci->num_of_certs; i++) {
+				Map<String, String> certData;
+
+				struct curl_slist *slist;
+				for (slist = ci->certinfo[i]; slist; slist = slist->next) {
+					StringView r(slist->data);
+					auto name = r.readUntil<StringView::Chars<':'>>();
+					name.trimChars<StringView::WhiteSpace>();
+					if (r.is(':')) {
+						++ r;
+						r.trimChars<StringView::WhiteSpace>();
+						certData.emplace(string::tolower(name), r.str());
+					}
+				}
+
+				if (!certData.empty()) {
+					_certificates.emplace_back(move(certData));
+				}
+			}
+		}
+	}
+
 	auto ret = finalize(&ctx, onAfterPerform);
 	Network::releaseHandle(ctx.curl, _reuse, ctx.code == CURLE_OK);
 	return ret;

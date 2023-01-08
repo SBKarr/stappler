@@ -341,6 +341,10 @@ bool NetworkHandle::setupCurl(CURL *curl, char *errorBuffer) {
 		SetOpt(check, curl, CURLOPT_SSL_VERIFYHOST, 0L);
 	}
 
+	if (_gatherCertInfo) {
+		SetOpt(check, curl, CURLOPT_CERTINFO, 1L);
+	}
+
 	SetOpt(check, curl, CURLOPT_URL, _url.c_str());
 	SetOpt(check, curl, CURLOPT_RESUME_FROM, 0); // drop byte-ranged GET
 

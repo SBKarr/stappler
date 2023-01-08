@@ -140,7 +140,9 @@ public:
 	void setShared(bool value) { _shared = value; }
 	void setSilent(bool value) { _silent = value; }
 	void setVerifyHost(bool value) { _verifyHost = value; }
+	void setGatherCertInfo(bool value) { _gatherCertInfo = value; }
 	const StringStream &getDebugData() const { return _debugData; }
+	const Vector<Map<String, String>> &getCertificates() const { return _certificates; }
 
 	void setDownloadProgress(const ProgressCallback &callback);
 	void setUploadProgress(const ProgressCallback &callback);
@@ -185,6 +187,7 @@ protected:
 #else
 	bool _verifyHost = true;
 #endif
+	bool _gatherCertInfo = false;
 
 	Vector<String> _sendedHeaders;
 	Vector<String> _recievedHeaders;
@@ -211,6 +214,7 @@ protected:
 	size_t _sendOffset = 0;
 
 	StringStream _debugData;
+	Vector<Map<String, String>> _certificates;
 
 	bool _silent = false;
 

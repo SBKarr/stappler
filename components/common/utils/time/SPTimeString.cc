@@ -507,6 +507,28 @@ bool sp_time_exp_t::read(StringView r) {
 		monstr = r.sub(3, 3);
 		timstr = r.sub(10, 8);
 		gmtstr = r.sub(19);
+	} else if (sp_date_checkmask(r, "####-##-## ##:##:##*")) {
+		// 2023-03-28 03:17:40 GMT
+		tm_year = ((r[0] - '0') * 10 + (r[1] - '0') - 19) * 100;
+		if (tm_year < 0) { return false; }
+
+		tm_year += ((r[2] - '0') * 10) + (r[3] - '0');
+		tm_mon = ((r[5] - '0') * 10) + (r[6] - '0') - 1;
+		tm_mday = ((r[8] - '0') * 10) + (r[9] - '0');
+
+		r += 11;
+		if (!sp_time_exp_read_time(*this, r.sub(0, 8))) { return false; }
+		if (!sp_time_exp_check_mon(*this)) { return false; }
+		r += 8;
+
+		if (r.is('.')) {
+			double v = r.readDouble().get();
+			tm_usec = 1000000 * v;
+		}
+		if (r.is(' ')) {
+			r ++;
+		}
+		return sp_time_exp_read_gmt(*this, r.empty()?"Z":r);
 	} else {
 		return false;
 	}
