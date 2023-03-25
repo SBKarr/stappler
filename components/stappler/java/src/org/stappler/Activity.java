@@ -358,7 +358,7 @@ public class Activity extends Cocos2dxActivity {
 	    browse.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
 	    startActivity( browse );
 	}
-	
+
 	public void perfromBackPressed() {
 		runOnUiThread(new Runnable() {
             @Override

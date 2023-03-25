@@ -526,13 +526,17 @@ bool NetworkHandle::setupReceive(CURL *curl, FILE * & inputFile, size_t &inputPo
 bool NetworkHandle::setupMethodGet(CURL *curl) {
 	bool check = true;
     SetOpt(check, curl, CURLOPT_HTTPGET, 1);
-    SetOpt(check, curl, CURLOPT_FOLLOWLOCATION, 1);
+    if (_followLocation) {
+        SetOpt(check, curl, CURLOPT_FOLLOWLOCATION, 1);
+    }
 	return check;
 }
 bool NetworkHandle::setupMethodHead(CURL *curl) {
 	bool check = true;
     SetOpt(check, curl, CURLOPT_HTTPGET, 1);
-    SetOpt(check, curl, CURLOPT_FOLLOWLOCATION, 1);
+    if (_followLocation) {
+    	SetOpt(check, curl, CURLOPT_FOLLOWLOCATION, 1);
+    }
     SetOpt(check, curl, CURLOPT_NOBODY, 1);
 	return check;
 }
@@ -590,7 +594,9 @@ bool NetworkHandle::setupMethodPut(CURL *curl, FILE * & outputFile) {
 }
 bool NetworkHandle::setupMethodDelete(CURL *curl) {
 	bool check = true;
-    SetOpt(check, curl, CURLOPT_FOLLOWLOCATION, 1);
+	if (_followLocation) {
+	    SetOpt(check, curl, CURLOPT_FOLLOWLOCATION, 1);
+	}
     SetOpt(check, curl, CURLOPT_CUSTOMREQUEST, "DELETE");
 	return check;
 }

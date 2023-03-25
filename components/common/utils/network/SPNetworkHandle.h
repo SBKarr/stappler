@@ -143,6 +143,7 @@ public:
 	void setGatherCertInfo(bool value) { _gatherCertInfo = value; }
 	const StringStream &getDebugData() const { return _debugData; }
 	const Vector<Map<String, String>> &getCertificates() const { return _certificates; }
+	void setFollowLocation(bool value) { _followLocation = value; }
 
 	void setDownloadProgress(const ProgressCallback &callback);
 	void setUploadProgress(const ProgressCallback &callback);
@@ -188,6 +189,7 @@ protected:
 	bool _verifyHost = true;
 #endif
 	bool _gatherCertInfo = false;
+	bool _followLocation = true;
 
 	Vector<String> _sendedHeaders;
 	Vector<String> _recievedHeaders;

@@ -930,7 +930,7 @@ bool Transaction::checkUnique(const IndexMap &map) const { // false is unique va
 		}
 		if (!silent) {
 			stappler::log::vtext("minidb", "Fail to insert object - unique check on field '", f->second->getName(),
-					"' faild with value ", value);
+					"' with value ", value);
 		}
 		return false;
 	};
