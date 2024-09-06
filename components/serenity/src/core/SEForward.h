@@ -28,7 +28,6 @@ THE SOFTWARE.
 #include "SPData.h"
 #include "SPValid.h"
 #include <atomic>
-#include <postgresql/libpq-fe.h>
 
 #include "SPLog.h"
 #include "SPTime.h"

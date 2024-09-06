@@ -649,6 +649,16 @@ Driver::Driver(mem::StringView path, const void *external) : _external(external)
 			PgDriverLibStorage::getInstance()->closeLib(_handle);
 			_handle = nullptr;
 		});
+	} else {
+		name = mem::StringView("libpq.so.5");
+		if (auto l = PgDriverLibStorage::getInstance()->openLib(name)) {
+			_handle = l;
+
+			mem::pool::cleanup_register(mem::pool::acquire(), [this] {
+				PgDriverLibStorage::getInstance()->closeLib(_handle);
+				_handle = nullptr;
+			});
+		}
 	}
 }
 
@@ -897,7 +907,6 @@ NS_DB_PQ_END
 #if SPAPR
 #include "apr_dbd.h"
 #include "mod_dbd.h"
-#include <postgresql/libpq-fe.h>
 
 struct apr_dbd_transaction_t {
     int mode;
@@ -906,7 +915,7 @@ struct apr_dbd_transaction_t {
 };
 
 struct apr_dbd_t {
-    PGconn *conn;
+    void *conn;
     apr_dbd_transaction_t *trans;
 };
 
@@ -916,7 +925,7 @@ Driver::Handle Driver::doConnect(const char * const *keywords, const char * cons
 	auto p = mem::pool::acquire();
 	if (_external) {
 		ConnStatusType status = CONNECTION_OK;
-		PGconn * ret = (PGconn *)_handle->PQconnectdbParams(keywords, values, expand_dbname);
+		void * ret = (void *)_handle->PQconnectdbParams(keywords, values, expand_dbname);
 		if (ret) {
 			status = _handle->PQstatus(ret);
 			if (status != CONNECTION_OK) {

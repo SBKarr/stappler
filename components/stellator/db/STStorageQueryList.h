@@ -91,6 +91,7 @@ protected:
 SP_DEFINE_ENUM_AS_MASK(QueryFieldResolver::Meta);
 
 using FullTextData = stappler::search::SearchData;
+using FullTextQuery = stappler::search::SearchQuery;
 
 class QueryList : public mem::AllocBase {
 public:

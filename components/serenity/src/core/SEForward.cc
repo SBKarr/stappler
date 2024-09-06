@@ -102,6 +102,7 @@ Transaction Transaction::acquire(const Adapter &adapter) {
 			t.retain();
 			return t;
 		} else {
+			stappler::memory::pool::push(pool);
 			d = new (pool) Data{adapter, pool};
 			d->role = AccessRoleId::System;
 			stappler::apr::pool::store(pool, d, key);
@@ -117,6 +118,7 @@ Transaction Transaction::acquire(const Adapter &adapter) {
 			if (auto serv = stappler::apr::pool::server()) {
 				stappler::serenity::Server(serv).onStorageTransaction(ret);
 			}
+			stappler::memory::pool::pop();
 			return ret;
 		}
 	}

@@ -673,6 +673,10 @@ bool Formatter::read(const FontParameters &f, const TextParameters &s, const cha
 
 	primaryFontId = FontLayoutIdInvalid;
 
+	if (!output->source) {
+		return false;
+	}
+
 	primary = output->source->getLayout(f, fontScale);
 	if (f.fontVariant == FontVariant::SmallCaps) {
 		secondary = output->source->getLayout(f.getSmallCaps(), fontScale);

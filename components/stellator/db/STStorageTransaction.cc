@@ -39,6 +39,7 @@ Transaction::Op Transaction::getTransactionOp(Action a) {
 
 Transaction Transaction::acquire() {
 	if (auto t = acquireIfExists()) {
+		t.retain();
 		return t;
 	}
 	if (auto a = Adapter::FromContext()) {
@@ -84,6 +85,13 @@ void Transaction::release() const {
 
 Transaction::Transaction(nullptr_t) : Transaction((Data *)nullptr) { }
 
+Transaction::Transaction(const Transaction &t) : Transaction(t._data) { }
+
+Transaction &Transaction::operator=(const Transaction &t) {
+	_data = t._data;
+	return *this;
+}
+
 Transaction::Transaction(Data *d) : _data(d) { }
 
 void Transaction::setRole(AccessRoleId id) const {
@@ -109,7 +117,7 @@ mem::Value Transaction::setObject(int64_t id, mem::Value &&val) const {
 	mem::Value ret;
 	mem::pool::push(_data->objects.get_allocator());
 	do {
-		ret = _data->objects.emplace(id, std::move(val)).first->second;
+		ret = _data->objects.emplace(id, mem::Value(val)).first->second;
 	} while (0);
 	mem::pool::pop();
 	return ret;

@@ -111,7 +111,7 @@ template <typename Clause>
 static inline auto SqlQuery_makeWhereClause(SqlQuery::Context &ctx, Clause &tmp, const mem::StringView &lName = mem::StringView(), uint64_t oid = 0) {
 	bool isAsc = ctx.query->getOrdering() == Ordering::Ascending;
 	if (ctx.query->hasSelect() || !ctx.softLimitField.empty() || !lName.empty()) {
-		if (ctx.softLimitField == "__oid") {
+		if (ctx.softLimitField == "__oid" || !ctx.hasAltLimit) {
 			if (auto &val = ctx.query->getSoftLimitValue()) {
 				auto w = tmp.where(SqlQuery::Field(ctx.scheme->getName(), ctx.softLimitField),
 						isAsc ? Comparation::GreatherThen : Comparation::LessThen, val.asInteger());
@@ -743,7 +743,7 @@ SqlQuery::Context::Context(SqlQuery &sql, const Scheme &s, const Worker &w, cons
 			softLimitField = field;
 		} else if (f) {
 			softLimitField = f->getName();
-			hasAltLimit = true;
+			hasAltLimit = (f->getType() == Type::FullTextView || !f->hasFlag(Flags::Unique));
 			softLimitIsFts = (f->getType() == Type::FullTextView);
 		} else {
 			messages::error("SqlQuery", "Invalid soft limit field", mem::Value(field));

@@ -97,6 +97,8 @@ public:
 	static Transaction acquireIfExists(stappler::memory::pool_t *);
 
 	Transaction(nullptr_t);
+	Transaction(const Transaction &);
+	Transaction &operator=(const Transaction &);
 
 	void setRole(AccessRoleId) const;
 	AccessRoleId getRole() const;
