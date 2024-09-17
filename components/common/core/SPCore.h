@@ -305,6 +305,21 @@ inline constexpr T minOf() {
 	return NumericLimits<T>::min();
 }
 
+template <>
+inline constexpr double minOf<double>() {
+	return NumericLimits<double>::lowest();
+}
+
+template <>
+inline constexpr float minOf<float>() {
+	return NumericLimits<float>::lowest();
+}
+
+template <>
+inline constexpr long double minOf<long double>() {
+	return NumericLimits<long double>::lowest();
+}
+
 template <class T> constexpr inline T progress(const T &a, const T &b, float p) { return (a * (1.0f - p) + b * p); }
 
 template <class T, class V>
