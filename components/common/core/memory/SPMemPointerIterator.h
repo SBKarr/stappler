@@ -28,7 +28,7 @@ THE SOFTWARE.
 NS_SP_EXT_BEGIN(memory)
 
 template<class Type, class Pointer, class Reference>
-class pointer_iterator : public std::iterator<std::random_access_iterator_tag, Type, std::ptrdiff_t, Pointer, Reference> {
+class pointer_iterator {
 public:
 	using size_type = size_t;
 	using pointer = Pointer;
