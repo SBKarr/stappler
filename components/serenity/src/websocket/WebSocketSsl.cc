@@ -50,7 +50,6 @@ struct SSLConnRec {
 	const char *verify_info;
 	const char *verify_error;
 	int verify_depth;
-	int is_proxy;
 	int disabled;
 	enum {
 		NON_SSL_OK = 0, /* is SSL request, or error handling completed */
@@ -58,19 +57,6 @@ struct SSLConnRec {
 		NON_SSL_SEND_HDR_SEP, /* Need to send the header separator */
 		NON_SSL_SET_ERROR_MSG /* Need to set the error message */
 	} non_ssl_request;
-
-	/* Track the handshake/renegotiation state for the connection so
-	 * that all client-initiated renegotiations can be rejected, as a
-	 * partial fix for CVE-2009-3555. */
-	enum {
-		RENEG_INIT = 0, /* Before initial handshake */
-		RENEG_REJECT, /* After initial handshake; any client-initiated
-		 * renegotiation should be rejected */
-		RENEG_ALLOW, /* A server-initiated renegotiation is taking
-		 * place (as dictated by configuration) */
-		RENEG_ABORT /* Renegotiation initiated by client, abort the
-		 * connection */
-	} reneg_state;
 
 	server_rec *server;
 	SSLDirConfigRec *dc;
@@ -111,7 +97,7 @@ struct bio_filter_in_ctx_t {
 struct bio_filter_out_ctx_t {
 	ssl_filter_ctx_t *filter_ctx;
 	conn_rec *c;
-	apr_bucket_brigade *bb;    /* Brigade used as a buffer. */
+	apr_bucket_brigade *bb; /* Brigade used as a buffer. */
 	apr_status_t rc;
 };
 
