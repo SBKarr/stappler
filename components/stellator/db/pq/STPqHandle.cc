@@ -283,7 +283,17 @@ public:
 	}
 
 	virtual void bindFullTextData(db::Binder &, mem::StringStream &query, const db::FullTextData &d) override {
-		auto idx = push(mem::String(d.buffer));
+		mem::StringStream stream;
+		auto str = mem::StringView(d.buffer);
+		while (!str.empty()) {
+			stream << str.readUntil<mem::StringView::Chars<':'>>();
+			if (str.is(':')) {
+				++ str;
+				stream << "\\:";
+			}
+		}
+
+		auto idx = push(stream.str());
 		switch (d.type) {
 		case db::FullTextData::Parse:
 			query  << " websearch_to_tsquery('" << d.getLanguage() << "', $" << idx << "::text)";
@@ -492,7 +502,13 @@ bool Handle::performSimpleQuery(const mem::StringView &query, const mem::Callbac
 			errCb(info);
 		}
 		s_logMutex.lock();
-		std::cout << query << "\n";
+
+		mem::StringView q(query);
+		while (!q.empty()) {
+			auto tmp = q.sub(0, 120);
+			std::cout << tmp << "\n";
+			q += 120;
+		}
 		std::cout << info << "\n";
 		s_logMutex.unlock();
 		cancelTransaction_pg();
@@ -519,7 +535,12 @@ bool Handle::performSimpleSelect(const mem::StringView &query, const stappler::C
 			errCb(info);
 		}
 		s_logMutex.lock();
-		std::cout << query << "\n";
+		mem::StringView q(query);
+		while (!q.empty()) {
+			auto tmp = q.sub(0, 120);
+			std::cout << tmp << "\n";
+			q += 120;
+		}
 		std::cout << info << "\n";
 		s_logMutex.unlock();
 		cancelTransaction_pg();
