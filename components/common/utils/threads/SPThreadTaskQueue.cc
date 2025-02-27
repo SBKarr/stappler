@@ -686,8 +686,8 @@ bool Worker::worker() {
 
 	Rc<Task> task;
 	if (_local) {
-		_local->queue.pop_direct([&] (memory::PriorityQueue<Rc<Task>>::PriorityType, Rc<Task> &&task) {
-			task = move(task);
+		_local->queue.pop_direct([&] (memory::PriorityQueue<Rc<Task>>::PriorityType, Rc<Task> &&t) {
+			task = move(t);
 		});
 	}
 

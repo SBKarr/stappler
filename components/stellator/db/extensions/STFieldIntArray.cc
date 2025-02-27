@@ -90,6 +90,8 @@ mem::String FieldIntArray::getIndexField() const { return mem::toString("USING G
 
 bool FieldIntArray::isComparationAllowed(db::Comparation c) const {
 	switch (c) {
+	case db::Comparation::In:
+	case db::Comparation::NotIn:
 	case db::Comparation::Includes:
 	case db::Comparation::Equal:
 	case db::Comparation::IsNotNull:
@@ -108,8 +110,26 @@ void FieldIntArray::writeQuery(const db::Scheme &s, stappler::sql::Query<db::Bin
 		whi.where(op, db::sql::SqlQuery::Field(s.getName(), f), cmp, val);
 	} else {
 		if (val.isInteger()) {
-			whi.where(op, db::sql::SqlQuery::Field(s.getName(), f), "@>", db::sql::SqlQuery::RawString{mem::toString("ARRAY[", val.asInteger(), ']')});
+			mem::StringView comp = mem::StringView("@>");
+			/*if (cmp == stappler::sql::Comparation::Equal) {
+				comp = mem::StringView("=");
+			}*/
+
+			if (cmp == stappler::sql::Comparation::NotIn) {
+				whi.negation(op, [&] (stappler::sql::Query<db::Binder, mem::Interface>::WhereBegin &whb) {
+					whb.where(db::sql::SqlQuery::Field(s.getName(), f), comp,
+						db::sql::SqlQuery::RawString{mem::toString("ARRAY[", val.asInteger(), "]")});
+				});
+			} else {
+				whi.where(op, db::sql::SqlQuery::Field(s.getName(), f), comp,
+						db::sql::SqlQuery::RawString{mem::toString("ARRAY[", val.asInteger(), "]")});
+			}
 		} else if (val.isArray()) {
+			mem::StringView comp = mem::StringView("&&");
+			/*if (cmp == stappler::sql::Comparation::Equal) {
+				comp = mem::StringView("=");
+			}*/
+
 			mem::StringStream str; str << "ARRAY[";
 			bool init = false;
 			for (auto &it : val.asArray()) {
@@ -120,7 +140,13 @@ void FieldIntArray::writeQuery(const db::Scheme &s, stappler::sql::Query<db::Bin
 			}
 			str << "]";
 			if (init) {
-				whi.where(op, db::sql::SqlQuery::Field(s.getName(), f), "&&", db::sql::SqlQuery::RawString{str.str()});
+				if (cmp == stappler::sql::Comparation::NotIn) {
+					whi.negation(op, [&] (stappler::sql::Query<db::Binder, mem::Interface>::WhereBegin &whb) {
+						whb.where(db::sql::SqlQuery::Field(s.getName(), f), comp, db::sql::SqlQuery::RawString{str.str()});
+					});
+				} else {
+					whi.where(op, db::sql::SqlQuery::Field(s.getName(), f), comp, db::sql::SqlQuery::RawString{str.str()});
+				}
 			}
 		}
 	}
@@ -186,6 +212,8 @@ mem::String FieldBigIntArray::getIndexField() const { return mem::toString("USIN
 
 bool FieldBigIntArray::isComparationAllowed(db::Comparation c) const {
 	switch (c) {
+	case db::Comparation::In:
+	case db::Comparation::NotIn:
 	case db::Comparation::Includes:
 	case db::Comparation::Equal:
 	case db::Comparation::IsNotNull:
@@ -204,8 +232,26 @@ void FieldBigIntArray::writeQuery(const db::Scheme &s, stappler::sql::Query<db::
 		whi.where(op, db::sql::SqlQuery::Field(s.getName(), f), cmp, val);
 	} else {
 		if (val.isInteger()) {
-			whi.where(op, db::sql::SqlQuery::Field(s.getName(), f), "@>", db::sql::SqlQuery::RawString{mem::toString("ARRAY[", val.asInteger(), "::bigint]")});
+			mem::StringView comp = mem::StringView("@>");
+			/*if (cmp == stappler::sql::Comparation::Equal) {
+				comp = mem::StringView("=");
+			}*/
+
+			if (cmp == stappler::sql::Comparation::NotIn) {
+				whi.negation(op, [&] (stappler::sql::Query<db::Binder, mem::Interface>::WhereBegin &whb) {
+					whb.where(db::sql::SqlQuery::Field(s.getName(), f), comp,
+						db::sql::SqlQuery::RawString{mem::toString("ARRAY[", val.asInteger(), "::bigint]")});
+				});
+			} else {
+				whi.where(op, db::sql::SqlQuery::Field(s.getName(), f), comp,
+						db::sql::SqlQuery::RawString{mem::toString("ARRAY[", val.asInteger(), "::bigint]")});
+			}
 		} else if (val.isArray()) {
+			mem::StringView comp = mem::StringView("&&");
+			/*if (cmp == stappler::sql::Comparation::Equal) {
+				comp = mem::StringView("=");
+			}*/
+
 			mem::StringStream str; str << "ARRAY[";
 			bool init = false;
 			for (auto &it : val.asArray()) {
@@ -216,7 +262,13 @@ void FieldBigIntArray::writeQuery(const db::Scheme &s, stappler::sql::Query<db::
 			}
 			str << "]";
 			if (init) {
-				whi.where(op, db::sql::SqlQuery::Field(s.getName(), f), "&&", db::sql::SqlQuery::RawString{str.str()});
+				if (cmp == stappler::sql::Comparation::NotIn) {
+					whi.negation(op, [&] (stappler::sql::Query<db::Binder, mem::Interface>::WhereBegin &whb) {
+						whb.where(db::sql::SqlQuery::Field(s.getName(), f), comp, db::sql::SqlQuery::RawString{str.str()});
+					});
+				} else {
+					whi.where(op, db::sql::SqlQuery::Field(s.getName(), f), comp, db::sql::SqlQuery::RawString{str.str()});
+				}
 			}
 		}
 	}

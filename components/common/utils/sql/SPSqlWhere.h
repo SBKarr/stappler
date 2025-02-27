@@ -181,11 +181,26 @@ template <typename Callback>
 auto Query<Binder, Interface>::WhereClause<Clause>::parenthesis(Operator op, const Callback &cb) -> Clause & {
 	if (this->state == State::None) { this->state = State::Some; } else { Query_writeOperator(this->query->stream, op); }
 	this->query->stream << "(";
-	auto state = this->state;
+	auto tmpState = this->state;
 	this->state = State::None;
 	WhereBegin tmp(this->query);
 	cb(tmp);
-	this->state = state;
+	this->state = tmpState;
+	this->query->stream << ")";
+	return (Clause &)*this;
+}
+
+template <typename Binder, typename Interface>
+template <typename Clause>
+template <typename Callback>
+auto Query<Binder, Interface>::WhereClause<Clause>::negation(Operator op, const Callback &cb) -> Clause & {
+	if (this->state == State::None) { this->state = State::Some; } else { Query_writeOperator(this->query->stream, op); }
+	this->query->stream << " NOT (";
+	auto tmpState = this->state;
+	this->state = State::None;
+	WhereBegin tmp(this->query);
+	cb(tmp);
+	this->state = tmpState;
 	this->query->stream << ")";
 	return (Clause &)*this;
 }
@@ -208,6 +223,14 @@ template <typename Callback>
 auto Query<Binder, Interface>::WhereBegin::whereParentesis(const Callback &cb) -> WhereContinue {
 	WhereContinue q(this->query);
 	q.parenthesis(sql::Operator::And, cb);
+	return q;
+}
+
+template <typename Binder, typename Interface>
+template <typename Callback>
+auto Query<Binder, Interface>::WhereBegin::whereNegation(const Callback &cb) -> WhereContinue {
+	WhereContinue q(this->query);
+	q.negation(sql::Operator::And, cb);
 	return q;
 }
 

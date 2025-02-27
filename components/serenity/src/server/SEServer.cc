@@ -326,6 +326,10 @@ struct Server::Config : public AllocPool {
 				root->dbdClose(serv, db);
 			}
 		}
+
+		if (loadingFalled) {
+			abort();
+		}
 	}
 
 	void onStorageTransaction(storage::Transaction &t) {
