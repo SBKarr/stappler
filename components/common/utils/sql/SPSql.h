@@ -246,6 +246,9 @@ public:
 		template <typename Callback>
 		auto parenthesis(Operator, const Callback &) -> Clause &;
 
+		template <typename Callback>
+		auto negation(Operator, const Callback &) -> Clause &;
+
 		using QueryHandle::QueryHandle;
 	};
 
@@ -256,6 +259,9 @@ public:
 
 		template <typename Callback>
 		auto whereParentesis(const Callback &) -> WhereContinue;
+
+		template <typename Callback>
+		auto whereNegation(const Callback &) -> WhereContinue;
 
 		using QueryHandle::QueryHandle;
 	};

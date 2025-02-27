@@ -135,7 +135,7 @@ static void stellator_user_xFunc(sqlite3_context *ctx, int nargs, sqlite3_value 
 
 Driver::Handle Driver::connect(const mem::Map<mem::StringView, mem::StringView> &params) const {
 	auto p = mem::pool::create(mem::pool::acquire());
-	Driver::Handle rec;
+	Driver::Handle rec = Driver::Handle(nullptr);
 	mem::pool::push(p);
 
 	int flags = 0;
