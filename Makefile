@@ -20,6 +20,8 @@
 
 .DEFAULT_GOAL := all
 
+LOCAL_MAKEFILE := $(lastword $(MAKEFILE_LIST))
+
 THIS_FILE := $(lastword $(MAKEFILE_LIST))
 
 STAPPLER_MAKE_FILE := $(realpath $(lastword $(MAKEFILE_LIST)))

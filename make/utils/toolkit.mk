@@ -33,6 +33,8 @@ $(TOOLKIT_NAME)_INPUT_CFLAGS := $(call sp_toolkit_include_flags,$($(TOOLKIT_NAME
 $(TOOLKIT_NAME)_CXXFLAGS := $(GLOBAL_CXXFLAGS) $($(TOOLKIT_NAME)_FLAGS) $($(TOOLKIT_NAME)_INPUT_CFLAGS)
 $(TOOLKIT_NAME)_CFLAGS := $(GLOBAL_CFLAGS) $($(TOOLKIT_NAME)_FLAGS) $($(TOOLKIT_NAME)_INPUT_CFLAGS)
 
+$(TOOLKIT_NAME)_COMPILATION_DATABASE := $($(TOOLKIT_NAME)_OUTPUT_DIR)/compile_commands.json
+
 COUNTER_WORDS := $(words $($(TOOLKIT_NAME)_GCH) $($(TOOLKIT_NAME)_OBJS))
 COUNTER_NAME := $(TOOLKIT_TITLE)
 
@@ -40,8 +42,8 @@ include $(GLOBAL_ROOT)/make/utils/counter.mk
 $(foreach obj,$($(TOOLKIT_NAME)_GCH) $($(TOOLKIT_NAME)_OBJS),$(eval $(call counter_template,$(obj))))
 
 # include dependencies
--include $(patsubst %.o,%.o.d,$($(TOOLKIT_NAME)_OBJS))
--include $(patsubst %.h.gch,%.h.gch.d,$($(TOOLKIT_NAME)_GCH))
+-include $(addsuffix .d,$($(TOOLKIT_NAME)_OBJS))
+-include $(addsuffix .d,$($(TOOLKIT_NAME)_GCH))
 
 # $(1) is a parameter to substitute. The $$ will expand as $.
 
@@ -56,20 +58,47 @@ $(1): $(patsubst %.h.gch,%.h,$(1)) $(call sp_make_dep,$(1))
 endef
 
 define $(TOOLKIT_NAME)_c_rule
-$(abspath $(addprefix $(2),$(patsubst %.c,%.o,$(1)))): $(1) $$($$(TOOLKIT_NAME)_H_GCH) $$($$(TOOLKIT_NAME)_GCH) \
-		$(call sp_make_dep,$(abspath $(addprefix $(2),$(patsubst %.c,%.o,$(1)))))
+$(2).json: $(1) $$(LOCAL_MAKEFILE)
+	@$(GLOBAL_MKDIR) $$(dir $$@)
+	@echo "{" > $$@
+	@echo '"directory":"'$$(call sp_cdb_convert_cmd,$$(BUILD_WORKDIR))'",' >> $$@
+	@echo '"file":"'$$(call sp_cdb_convert_cmd,$(1))'",' >> $$@
+	@echo '"output":"'$$(call sp_cdb_convert_cmd,$(2))'",' >> $$@
+	@echo '"arguments":[$$(call sp_cdb_split_arguments_cmd,$$(GLOBAL_CC),$$(call sp_compile_command,,$$(OSTYPE_C_FILE),$(3),$(1),$(2)))]' >> $$@
+	@echo "}," >> $$@
+	@echo [Compilation database entry]: $(notdir $(1))
+
+$(2): $(1) $$($$(TOOLKIT_NAME)_H_GCH) $$($$(TOOLKIT_NAME)_GCH) $(call sp_make_dep,$(2)) | $(2).json
 	$$(call sp_compile_c,$(3))
 endef
 
 define $(TOOLKIT_NAME)_cpp_rule
-$(abspath $(addprefix $(2),$(patsubst %.cpp,%.o,$(1)))): $(1) $$($$(TOOLKIT_NAME)_H_GCH) $$($$(TOOLKIT_NAME)_GCH) \
-		$(call sp_make_dep,$(abspath $(addprefix $(2),$(patsubst %.cpp,%.o,$(1)))))
+$(2).json: $(1) $$(LOCAL_MAKEFILE)
+	@$(GLOBAL_MKDIR) $$(dir $$@)
+	@echo "{" > $$@
+	@echo '"directory":"'$$(call sp_cdb_convert_cmd,$$(BUILD_WORKDIR))'",' >> $$@
+	@echo '"file":"'$$(call sp_cdb_convert_cmd,$(1))'",' >> $$@
+	@echo '"output":"'$$(call sp_cdb_convert_cmd,$(2))'",' >> $$@
+	@echo '"arguments":[$$(call sp_cdb_split_arguments_cmd,$$(GLOBAL_CPP),$$(call sp_compile_command,,$$(OSTYPE_CPP_FILE),$(3),$(1),$(2)))]' >> $$@
+	@echo "}," >> $$@
+	@echo [Compilation database entry]: $(notdir $(1))
+
+$(2): $(1) $$($$(TOOLKIT_NAME)_H_GCH) $$($$(TOOLKIT_NAME)_GCH) $(call sp_make_dep,$(2)) | $(2).json
 	$$(call sp_compile_cpp,$(3))
 endef
 
 define $(TOOLKIT_NAME)_mm_rule
-$(abspath $(addprefix $(2),$(patsubst %.mm,%.o,$(1)))): $(1) $$($$(TOOLKIT_NAME)_H_GCH) $$($$(TOOLKIT_NAME)_GCH) \
-		$(call sp_make_dep,$(abspath $(addprefix $(2),$(patsubst %.mm,%.o,$(1)))))
+$(2).json: $(1) $$(LOCAL_MAKEFILE)
+	@$(GLOBAL_MKDIR) $$(dir $$@)
+	@echo "{" > $$@
+	@echo '"directory":"'$$(call sp_cdb_convert_cmd,$$(BUILD_WORKDIR))'",' >> $$@
+	@echo '"file":"'$$(call sp_cdb_convert_cmd,$(1))'",' >> $$@
+	@echo '"output":"'$$(call sp_cdb_convert_cmd,$(2))'",' >> $$@
+	@echo '"arguments":[$$(call sp_cdb_split_arguments_cmd,$$(GLOBAL_CPP),$$(call sp_compile_command,,$$(OSTYPE_MM_FILE),$(3),$(1),$(2)))]' >> $$@
+	@echo "}," >> $$@
+	@echo [Compilation database entry]: $(notdir $(1))
+
+$(2): $(1) $$($$(TOOLKIT_NAME)_H_GCH) $$($$(TOOLKIT_NAME)_GCH) $(call sp_make_dep,$(2)) | $(2).json
 	$$(call sp_compile_mm,$(3))
 endef
 
@@ -77,17 +106,30 @@ $(foreach target,$(patsubst %.h.gch,%.h,$($(TOOLKIT_NAME)_GCH)),$(eval $(call $(
 
 $(foreach target,$($(TOOLKIT_NAME)_GCH),$(eval $(call $(TOOLKIT_NAME)_gch_rule,$(target),$($(TOOLKIT_NAME)_CXXFLAGS))))
 
-$(foreach target,\
+$(foreach source,\
 	$(filter %.c,$($(TOOLKIT_NAME)_SRCS)),\
-	$(eval $(call $(TOOLKIT_NAME)_c_rule,$(target),$($(TOOLKIT_NAME)_OUTPUT_DIR),$($(TOOLKIT_NAME)_CFLAGS))))
+	$(eval $(call $(TOOLKIT_NAME)_c_rule,\
+		$(source),\
+		$(abspath $(addprefix $($(TOOLKIT_NAME)_OUTPUT_DIR)/,$(addsuffix .o,$(notdir $(source))))), \
+		$($(TOOLKIT_NAME)_CFLAGS))))
 
-$(foreach target,\
+$(foreach source,\
 	$(filter %.cpp,$($(TOOLKIT_NAME)_SRCS)),\
-	$(eval $(call $(TOOLKIT_NAME)_cpp_rule,$(target),$($(TOOLKIT_NAME)_OUTPUT_DIR),$($(TOOLKIT_NAME)_CXXFLAGS))))
+	$(eval $(call $(TOOLKIT_NAME)_cpp_rule,\
+		$(source),\
+		$(abspath $(addprefix $($(TOOLKIT_NAME)_OUTPUT_DIR)/,$(addsuffix .o,$(notdir $(source))))), \
+		$($(TOOLKIT_NAME)_CXXFLAGS))))
 
-$(foreach target,\
+$(foreach source,\
 	$(filter %.mm,$($(TOOLKIT_NAME)_SRCS)),\
-	$(eval $(call $(TOOLKIT_NAME)_mm_rule,$(target),$($(TOOLKIT_NAME)_OUTPUT_DIR),$($(TOOLKIT_NAME)_CXXFLAGS))))
+	$(eval $(call $(TOOLKIT_NAME)_mm_rule,\
+		$(source),\
+		$(abspath $(addprefix $($(TOOLKIT_NAME)_OUTPUT_DIR)/,$(addsuffix .o,$(notdir $(source))))), \
+		$($(TOOLKIT_NAME)_CXXFLAGS))))
+
+$(TOOLKIT_NAME)_CDB_TARGET_JSON := $(addsuffix .json,$($(TOOLKIT_NAME)_OBJS))
+
+$(eval $(call BUILD_cdb,$($(TOOLKIT_NAME)_COMPILATION_DATABASE),$($(TOOLKIT_NAME)_CDB_TARGET_JSON)))
 
 ifeq ($(UNAME),Msys)
 .INTERMEDIATE: $(subst /,_,$($(TOOLKIT_NAME)_GCH) $($(TOOLKIT_NAME)_OBJS))

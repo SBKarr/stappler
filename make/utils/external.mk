@@ -20,17 +20,16 @@
 
 BUILD_SRCS := $(call sp_local_source_list,$(LOCAL_SRCS_DIRS),$(LOCAL_SRCS_OBJS))
 BUILD_INCLUDES := $(call sp_local_include_list,$(LOCAL_INCLUDES_DIRS),$(LOCAL_INCLUDES_OBJS),$(LOCAL_ABSOLUTE_INCLUDES))
-BUILD_OBJS := $(call sp_local_object_list,$(BUILD_OUTDIR),$(BUILD_SRCS))
+BUILD_OBJS := $(abspath  $(call sp_local_object_list,$(BUILD_OUTDIR),$(BUILD_SRCS)))
 
 ifdef LOCAL_MAIN
 BUILD_MAIN_SRC := $(realpath $(addprefix $(LOCAL_ROOT)/,$(LOCAL_MAIN)))
-BUILD_MAIN_SRC := $(BUILD_MAIN_SRC:.c=.o)
-BUILD_MAIN_SRC := $(BUILD_MAIN_SRC:.cpp=.o)
-BUILD_MAIN_SRC := $(BUILD_MAIN_SRC:.mm=.o)
-BUILD_MAIN_OBJ := $(addprefix $(BUILD_OUTDIR),$(BUILD_MAIN_SRC))
+BUILD_MAIN_OBJ := $(abspath $(addprefix $(BUILD_OUTDIR)/,$(addsuffix .o,$(BUILD_MAIN_SRC))))
 else
 BUILD_MAIN_OBJ := 
 endif
+
+
 
 ifdef LOCAL_TOOLKIT_OUTPUT
 TOOLKIT_OUTPUT := $(LOCAL_TOOLKIT_OUTPUT)
@@ -143,6 +142,7 @@ endef
 
 $(foreach obj,$(BUILD_OBJS) $(BUILD_MAIN_OBJ),$(eval $(call BUILD_template,$(obj))))
 
+BUILD_LOCAL_SRCS := $(BUILD_SRCS) $(BUILD_MAIN_SRCS)
 BUILD_LOCAL_OBJS := $(BUILD_OBJS) $(BUILD_MAIN_OBJ)
 
 BUILD_OBJS += $(TOOLKIT_OBJS)
@@ -152,4 +152,76 @@ BUILD_CXXFLAGS += $(addprefix -I,$(BUILD_INCLUDES))
 
 BUILD_LIBS := $(foreach lib,$(LOCAL_LIBS),-L$(dir $(lib)) -l:$(notdir $(lib))) $(TOOLKIT_LIBS) $(LDFLAGS)
 
--include $(patsubst %.o,%.o.d,$(BUILD_OBJS) $(BUILD_MAIN_OBJ))
+BUILD_COMPILATION_DATABASE := ./compile_commands.json
+
+define BUILD_c_rule
+$(2).json: $(1) $$(LOCAL_MAKEFILE)
+	@$(GLOBAL_MKDIR) $$(dir $$@)
+	@echo "{" > $$@
+	@echo '"directory":"'$$(call sp_cdb_convert_cmd,$$(BUILD_WORKDIR))'",' >> $$@
+	@echo '"file":"'$$(call sp_cdb_convert_cmd,$(1))'",' >> $$@
+	@echo '"output":"'$$(call sp_cdb_convert_cmd,$(2))'",' >> $$@
+	@echo '"arguments":[$$(call sp_cdb_split_arguments_cmd,$$(GLOBAL_CC),$$(call sp_compile_command,,$$(OSTYPE_C_FILE),$(3),$(1),$(2)))]' >> $$@
+	@echo "}," >> $$@
+	@echo [Compilation database entry]: $(notdir $(1))
+
+$(2): $(1) $$(TOOLKIT_H_GCH) $$(TOOLKIT_GCH) $(call sp_make_dep,$(2)) | $(2).json $$(BUILD_COMPILATION_DATABASE)
+	$$(call sp_compile_c,$(3))
+endef
+
+define BUILD_cpp_rule
+$(2).json: $(1) $$(LOCAL_MAKEFILE)
+	@$(GLOBAL_MKDIR) $$(dir $$@)
+	@echo "{" > $$@
+	@echo '"directory":"'$$(call sp_cdb_convert_cmd,$$(BUILD_WORKDIR))'",' >> $$@
+	@echo '"file":"'$$(call sp_cdb_convert_cmd,$(1))'",' >> $$@
+	@echo '"output":"'$$(call sp_cdb_convert_cmd,$(2))'",' >> $$@
+	@echo '"arguments":[$$(call sp_cdb_split_arguments_cmd,$$(GLOBAL_CPP),$$(call sp_compile_command,,$$(OSTYPE_CPP_FILE),$(3),$(1),$(2)))]' >> $$@
+	@echo "}," >> $$@
+	@echo [Compilation database entry]: $(notdir $(1))
+
+$(2): $(1) $$(TOOLKIT_H_GCH) $$(TOOLKIT_GCH) $(call sp_make_dep,$(2)) | $(2).json $$(BUILD_COMPILATION_DATABASE)
+	$$(call sp_compile_cpp,$(3))
+endef
+
+define BUILD_mm_rule
+$(2).json: $(1) $$(LOCAL_MAKEFILE)
+	@$(GLOBAL_MKDIR) $$(dir $$@)
+	@echo "{" > $$@
+	@echo '"directory":"'$$(call sp_cdb_convert_cmd,$$(BUILD_WORKDIR))'",' >> $$@
+	@echo '"file":"'$$(call sp_cdb_convert_cmd,$(1))'",' >> $$@
+	@echo '"output":"'$$(call sp_cdb_convert_cmd,$(2))'",' >> $$@
+	@echo '"arguments":[$$(call sp_cdb_split_arguments_cmd,$$(GLOBAL_CPP),$$(call sp_compile_command,,$$(OSTYPE_MM_FILE),$(3),$(1),$(2)))]' >> $$@
+	@echo "}," >> $$@
+	@echo [Compilation database entry]: $(notdir $(1))
+
+$(2): $(1) $$(TOOLKIT_H_GCH) $$(TOOLKIT_GCH) $(call sp_make_dep,$(2)) | $(2).json $$(BUILD_COMPILATION_DATABASE)
+	$$(call sp_compile_mm,$(3))
+endef
+
+$(foreach source,\
+	$(filter %.c,$(BUILD_LOCAL_SRCS)),\
+	$(eval $(call BUILD_c_rule,\
+		$(realpath $(source)),\
+		$(abspath $(addprefix $(BUILD_OUTDIR)/,$(addsuffix .o,$(notdir $(source))))), \
+		$(BUILD_CFLAGS))))
+
+$(foreach source,\
+	$(filter %.cpp,$(BUILD_LOCAL_SRCS)),\
+	$(eval $(call BUILD_cpp_rule,\
+		$(realpath $(source)),\
+		$(abspath $(addprefix $(BUILD_OUTDIR)/,$(addsuffix .o,$(notdir $(source))))), \
+		$(BUILD_CXXFLAGS))))
+
+$(foreach source,\
+	$(filter %.mm,$(BUILD_LOCAL_SRCS)),\
+	$(eval $(call BUILD_mm_rule,\
+		$(realpath $(source)),\
+		$(abspath $(addprefix $(BUILD_OUTDIR)/,$(addsuffix .o,$(notdir $(source))))), \
+		$(BUILD_CXXFLAGS))))
+
+BUILD_CDB_TARGET_JSON := $(addsuffix .json,$(BUILD_OBJS))
+
+$(eval $(call BUILD_cdb,$(BUILD_COMPILATION_DATABASE),$(BUILD_CDB_TARGET_JSON)))
+
+-include $(addsuffix .d,$(BUILD_OBJS) $(BUILD_MAIN_OBJ))

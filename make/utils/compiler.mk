@@ -129,18 +129,37 @@ sp_convert_path = $(1)
 sp_unconvert_path = $(1)
 endif
 
-ifeq ($(UNAME),Msys)
-sp_compile_dep = -MMD -MP -MF $1.d $(2) -MT $(subst /,_,$1)
-sp_make_dep = $(subst /,_,$1)
+ifeq ($(CLANG),1)
+ifdef MSYS
+# Записываем имя зависимости в формате unix, иначе make не сможет его сопоставить
+sp_compile_dep = -MMD -MP -MF $(addsuffix .d,$(1)) $(2) -MT$(shell cygpath -u $(abspath $(1)))
 else
-sp_compile_dep = -MMD -MP -MF $1.d $(2)
-sp_make_dep = 
+sp_compile_dep = -MMD -MP -MF $(addsuffix .d,$(1)) $(2)
+endif
+else
+sp_compile_dep = -MMD -MP -MF $(addsuffix .d,$(1)) $(2)
 endif
 
-sp_compile_gch = $(GLOBAL_QUIET_CPP) $(GLOBAL_MKDIR) $(dir $@); $(GLOBAL_CPP) $(OSTYPE_GCHFLAGS) $(call sp_compile_dep, $@, $(1)) -c -o $@ $(call sp_convert_path,$<)
-sp_compile_c = $(GLOBAL_QUIET_CC) $(GLOBAL_MKDIR) $(dir $@); $(GLOBAL_CC) $(call sp_compile_dep, $@, $(1)) -c -o $@ $(call sp_convert_path,$<)
-sp_compile_cpp = $(GLOBAL_QUIET_CPP) $(GLOBAL_MKDIR) $(dir $@); $(GLOBAL_CPP) $(call sp_compile_dep, $@, $(1))  -c -o $@ $(call sp_convert_path,$<)
-sp_compile_mm = $(GLOBAL_QUIET_CPP) $(GLOBAL_MKDIR) $(dir $@); $(GLOBAL_CPP) $(call sp_compile_dep, $@, $(1)) -fobjc-arc -c -o $@ $(call sp_convert_path,$<)
+# $(1) - compiler
+# $(2) - filetype flags
+# $(3) - compile flags
+# $(4) - input file
+# $(5) - output file
+
+sp_compile_command = $(1) $(2) $(call sp_compile_dep, $(5), $(3)) -c -o $(5) $(4)
+
+sp_compile_gch = $(GLOBAL_QUIET_CPP) $(GLOBAL_MKDIR) $(dir $@);\
+	$(call sp_compile_command,$(GLOBAL_CPP),$(OSTYPE_GCH_FILE),$(1),$<,$@)
+
+sp_compile_c = $(GLOBAL_QUIET_CC) $(GLOBAL_MKDIR) $(dir $@);\
+	$(call sp_compile_command,$(GLOBAL_CC),$(OSTYPE_C_FILE),$(1),$<,$@)
+
+sp_compile_cpp = $(GLOBAL_QUIET_CPP) $(GLOBAL_MKDIR) $(dir $@);\
+	$(call sp_compile_command,$(GLOBAL_CPP),$(OSTYPE_CPP_FILE),$(1),$<,$@)
+
+sp_compile_mm = $(GLOBAL_QUIET_CPP) $(GLOBAL_MKDIR) $(dir $@);\
+	$(call sp_compile_command,$(GLOBAL_CPP),$(OSTYPE_MM_FILE),$(1) -fobjc-arc,$<,$@)
+
 sp_copy_header = @@$(GLOBAL_MKDIR) $(dir $@); cp -f $< $@
 
 $(call sp_toolkit_source_list, $($(TOOLKIT_NAME)_SRCS_DIRS), $($(TOOLKIT_NAME)_SRCS_OBJS))
@@ -178,7 +197,7 @@ sp_toolkit_include_list = $(foreach f,$(realpath\
 	$(filter /%,$(2)) \
 ),$(call sp_unconvert_path,$(f)))
 
-sp_toolkit_object_list = $(abspath $(addprefix $(1),$(patsubst %.c,%.o,$(patsubst %.cpp,%.o,$(patsubst %.mm,%.o,$(2))))))
+sp_toolkit_object_list = $(abspath $(addprefix $(1)/,$(addsuffix .o,$(notdir $(2)))))
 
 sp_toolkit_prefix_files_list = \
 	$(abspath $(addprefix $(1)/include,$(realpath $(addprefix $(GLOBAL_ROOT)/,$(2)))))
@@ -208,4 +227,35 @@ sp_local_include_list = \
 	$(3)
 
 sp_local_object_list = \
-	$(addprefix $(1),$(patsubst %.mm,%.o,$(patsubst %.c,%.o,$(patsubst %.cpp,%.o,$(realpath $(2))))))
+	$(addprefix $(1)/,$(addsuffix .o,$(notdir $(realpath $(2)))))
+
+ifdef MSYS
+sp_cdb_convert_cmd = `cygpath -w $(1) | sed -r 's/\\\\/\\\\\\\\/g'`
+sp_cdb_which_cmd = `which $(1) | cygpath -w -f - | sed -r 's/\\\\/\\\\\\\\/g'`
+else
+sp_cdb_convert_cmd = '$(1)'
+sp_cdb_which_cmd = `which $(1)`
+endif
+
+sp_cdb_process_arg = \
+	$(if $(filter -I%,$(1)),-I'$(call sp_cdb_convert_cmd,$(patsubst -I%,%,$(1)))',\
+		$(if $(filter /%,$(1)),'$(call sp_cdb_convert_cmd,$(1))',$(1))\
+	)
+
+sp_cdb_split_arguments_cmd = \
+	"'$(call sp_cdb_which_cmd,$(1))'"\
+	$(foreach arg,$(2),,"$(foreach a,$(call sp_cdb_process_arg,$(arg)),$(a))")
+
+define BUILD_write_cdb_entry
+@cat $(2) >> $(1)$(newline)$(tab)
+endef
+
+# $(1) - target path
+# $(2) - json files
+define BUILD_cdb
+$(1): $$(LOCAL_MAKEFILE) $$(TOOLKIT_MODULES) $$(TOOLKIT_CACHED_FLAGS) $(2)
+	@echo "[" > $(1)
+	$(foreach file,$(2),$(call BUILD_write_cdb_entry,$(1),$(file)))
+	@echo "]" >> $(1)
+	@echo [Compilation database] $(1)
+endef

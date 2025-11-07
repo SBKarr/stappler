@@ -18,5 +18,6 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 
+include $(GLOBAL_ROOT)/make/utils/default.mk
 include $(GLOBAL_ROOT)/make/utils/compiler.mk
 include $(GLOBAL_ROOT)/make/build.mk
