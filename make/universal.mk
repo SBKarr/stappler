@@ -20,7 +20,7 @@
 
 ifndef STAPPLER_TARGET
 
-include $(GLOBAL_ROOT)/make/utils/default.mk
+include $(STAPPLER_ROOT)/make/utils/default.mk
 
 .DEFAULT_GOAL := host
 
@@ -94,7 +94,7 @@ ios-all-clean:
 
 else
 
-include $(GLOBAL_ROOT)/make/utils/default.mk
+include $(STAPPLER_ROOT)/make/utils/default.mk
 
 ifeq ($(STAPPLER_TARGET),host)
 include $(STAPPLER_ROOT)/make/local.mk

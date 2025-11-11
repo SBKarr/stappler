@@ -24,11 +24,10 @@ BUILD_OBJS := $(abspath  $(call sp_local_object_list,$(BUILD_OUTDIR),$(BUILD_SRC
 
 ifdef LOCAL_MAIN
 BUILD_MAIN_SRC := $(realpath $(addprefix $(LOCAL_ROOT)/,$(LOCAL_MAIN)))
-BUILD_MAIN_OBJ := $(abspath $(addprefix $(BUILD_OUTDIR)/,$(addsuffix .o,$(BUILD_MAIN_SRC))))
+BUILD_MAIN_OBJ := $(abspath  $(call sp_local_object_list,$(BUILD_OUTDIR),$(BUILD_MAIN_SRC)))
 else
 BUILD_MAIN_OBJ := 
 endif
-
 
 
 ifdef LOCAL_TOOLKIT_OUTPUT
@@ -142,7 +141,7 @@ endef
 
 $(foreach obj,$(BUILD_OBJS) $(BUILD_MAIN_OBJ),$(eval $(call BUILD_template,$(obj))))
 
-BUILD_LOCAL_SRCS := $(BUILD_SRCS) $(BUILD_MAIN_SRCS)
+BUILD_LOCAL_SRCS := $(BUILD_SRCS) $(BUILD_MAIN_SRC)
 BUILD_LOCAL_OBJS := $(BUILD_OBJS) $(BUILD_MAIN_OBJ)
 
 BUILD_OBJS += $(TOOLKIT_OBJS)
@@ -198,6 +197,7 @@ $(2).json: $(1) $$(LOCAL_MAKEFILE)
 $(2): $(1) $$(TOOLKIT_H_GCH) $$(TOOLKIT_GCH) $(call sp_make_dep,$(2)) | $(2).json $$(BUILD_COMPILATION_DATABASE)
 	$$(call sp_compile_mm,$(3))
 endef
+
 
 $(foreach source,\
 	$(filter %.c,$(BUILD_LOCAL_SRCS)),\
