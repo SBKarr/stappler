@@ -371,7 +371,7 @@ const Map<String, Request::CookieStorage> Request::getResponseCookies() const {
 apr::weak_string Request::getCookie(const String &name, bool removeFromHeadersTable) const {
 	const char *val = nullptr;
 	if (ap_cookie_read(_request, name.c_str(), &val, (int)removeFromHeadersTable) == APR_SUCCESS) {
-		if (val) {
+		if (val && *val != 0) {
 			if (removeFromHeadersTable) {
 				ap_unescape_urlencoded((char *)val);
 				return apr::string::make_weak(val);
