@@ -864,8 +864,9 @@ auto StringViewBase<_CharType>::readFloat() -> Result<float> {
 
 template <typename _CharType>
 auto StringViewBase<_CharType>::readDouble() -> Result<double> {
+	using GroupFilter = StringViewBase<_CharType>::template CharGroup<CharGroupId::WhiteSpace>;
 	Self tmp = *this;
-	tmp.skipChars<typename Self::template CharGroup<CharGroupId::WhiteSpace>>();
+	tmp.skipChars<GroupFilter>();
 	auto targetPtr = tmp.ptr; auto targetLen = tmp.len;
 	auto ret = StringView_readNumber<double>(targetPtr, targetLen, 0);
 	this->ptr = targetPtr; this->len = targetLen;
@@ -874,8 +875,9 @@ auto StringViewBase<_CharType>::readDouble() -> Result<double> {
 
 template <typename _CharType>
 auto StringViewBase<_CharType>::readInteger(int base) -> Result<int64_t> {
+	using GroupFilter = StringViewBase<_CharType>::template CharGroup<CharGroupId::WhiteSpace>;
 	Self tmp = *this;
-	tmp.skipChars<typename Self::template CharGroup<CharGroupId::WhiteSpace>>();
+	tmp.skipChars<GroupFilter>();
 	auto targetPtr = tmp.ptr; auto targetLen = tmp.len;
 	auto ret = StringView_readNumber<int64_t>(targetPtr, targetLen, base);
 	this->ptr = targetPtr; this->len = targetLen;

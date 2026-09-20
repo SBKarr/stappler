@@ -978,7 +978,7 @@ int hnj_hyphen_hyph_(HyphenDict *dict, const char *word, int word_size,
   int * matchindex;
   char ** matchrepl;
   int isrepl = 0;
-  int nHyphCount;
+  [[maybe_unused]] int nHyphCount;
 
   size_t prep_word_size = word_size + 3;
   prep_word = (char*) hnj_malloc (prep_word_size);

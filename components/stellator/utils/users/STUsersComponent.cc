@@ -721,6 +721,7 @@ void UsersComponent::sendActivationEmail(StringView hostname, const data::Value 
 			<< registerMail;
 
 	network::Mail notify(_mailConfig);
+	notify.setConnectTimeout(180);
 	notify.addMailTo(email);
 	notify.send(msg);
 }
@@ -755,6 +756,7 @@ void UsersComponent::sendDropPasswordEmail(StringView hostname, const data::Valu
 			<< registerMail;
 
 	network::Mail notify(_mailConfig);
+	notify.setConnectTimeout(180);
 	notify.addMailTo(email);
 	notify.send(msg);
 }

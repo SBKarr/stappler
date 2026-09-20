@@ -469,7 +469,7 @@ bool PageCache::makeWal() const {
 
 	using MapType = mem::Pair<uint32_t, uint32_t>;
 
-	size_t walFileSize = 0;
+	[[maybe_unused]] size_t walFileSize = 0;
 	mem::Vector<MapType> pageMap;
 
 	for (auto &it : _pages) {

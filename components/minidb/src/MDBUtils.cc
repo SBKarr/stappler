@@ -529,7 +529,7 @@ mem::Map<PageType, uint32_t> inspectPages(const Transaction &t) {
 		for (auto &it : pages) {
 			if (auto page = t.openPage(it,  OpenMode::Read)) {
 				auto ptr = page->bytes.data();
-				auto pageSize = page->bytes.size();
+				[[maybe_unused]] auto pageSize = page->bytes.size();
 
 				if (memcmp(ptr, "minidb", 6) == 0) {
 					ptr += sizeof(StorageHeader); pageSize -= sizeof(StorageHeader);
@@ -601,7 +601,7 @@ static mem::Vector<uint32_t> processContentPages(const Transaction &t, const mem
 		}
 		if (auto page = t.openPage(it,  OpenMode::Read)) {
 			auto ptr = page->bytes.data();
-			auto pageSize = page->bytes.size();
+			[[maybe_unused]] auto pageSize = page->bytes.size();
 
 			if (memcmp(ptr, "minidb", 6) == 0) {
 				ptr += sizeof(StorageHeader); pageSize -= sizeof(StorageHeader);

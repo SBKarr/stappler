@@ -578,6 +578,7 @@ void Server_prepareEmail(Server::Config *cfg, Callback &&cb, ServerReportType ty
 		auto &title = cfg->webHookExtra.getString("title");
 
 		network::Mail notify(cfg->webHookUrl, cfg->webHookName, cfg->webHookExtra.getString("password"));
+		notify.setConnectTimeout(180);
 		notify.setMailFrom(from);
 		notify.addMailTo(to);
 

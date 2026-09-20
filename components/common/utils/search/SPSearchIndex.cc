@@ -183,7 +183,7 @@ float SearchIndex::Heuristic::operator () (const SearchIndex &index, const Searc
 
 	float mod = tagScore(node.node->tag);
 
-	size_t fullMatches = 0;
+	[[maybe_unused]] size_t fullMatches = 0;
 	float fullMatchCost = fullMatchScore / float(node.matches.size());
 	for (const SearchIndex::ResultToken &token_it : node.matches) {
 		if (excludeEqualMatches) {

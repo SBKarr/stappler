@@ -69,8 +69,8 @@ inline uint8_t utf8EncodeBuf(char *ptr, char16_t c) SPINLINE;
 constexpr inline bool isUtf8Surrogate(char c) SPINLINE;
 
 static constexpr inline char16_t utf8Decode(const char *ptr) {
-	uint8_t mask = utf8_length_mask[((const uint8_t *)ptr)[0]];
-	uint8_t len = utf8_length_data[((const uint8_t *)ptr)[0]];
+	uint8_t mask = utf8_length_mask[static_cast<uint8_t>(ptr[0])];
+	uint8_t len = utf8_length_data[static_cast<uint8_t>(ptr[0])];
 	uint32_t ret = ptr[0] & mask;
 	for (uint8_t c = 1; c < len; ++c) {
 		if ((ptr[c] & 0xc0) != 0x80) { ret = 0; break; }

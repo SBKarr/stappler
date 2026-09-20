@@ -135,6 +135,9 @@ public:
 	StringView getSendFile() const { return _sendFileName; }
 	StringView getReceiveFile() const { return _receiveFileName; }
 
+	StringView getProxyAddress() const { return _proxyAddress; }
+	StringView getProxyAuth() const { return _proxyAuth; }
+
 	void setDebug(bool value) { _debug = value; }
 	void setReuse(bool value) { _reuse = value; }
 	void setShared(bool value) { _shared = value; }
